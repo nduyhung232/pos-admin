@@ -23,6 +23,7 @@ import { registerAdminRoutes } from './admin/routes.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig();
 const app = express();
+app.set('trust proxy', 1);
 
 // Minimal request logger shim so lib/ modules can call req.log?.warn/error.
 app.use((req, _res, next) => {
@@ -48,7 +49,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: config.isProduction,
       maxAge: config.sessionTtlMs,
     },
