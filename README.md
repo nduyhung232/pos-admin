@@ -16,9 +16,6 @@ Bản gộp của `pos-admin` (backend Fastify + frontend React + packages/share
 cd "pos-admin-web"
 npm install
 
-# Mạng nội bộ TCB chặn SSL (Cisco Umbrella / TCB-PKI-CA) khi Prisma tải engine.
-# Đã có sẵn bundle CA corp-ca.pem trong repo. Trỏ Node vào nó (TLS verify VẪN bật):
-set NODE_EXTRA_CA_CERTS=%CD%\corp-ca.pem   # Windows cmd
 
 npx prisma generate
 npx prisma db push          # tạo data/pos.db (SQLite, 9 bảng)
@@ -28,9 +25,6 @@ npm start                   # http://localhost:3100
 
 Đăng nhập tại `/login` bằng **Quản lý / PIN 1234**.
 
-> Nếu `corp-ca.pem` hết hạn hoặc đổi máy: chạy `node scripts/grab-proxy-ca.mjs`
-> để lấy lại chain proxy, rồi nối root TCB-PKI-CA:
-> `certutil -enterprise -store Root TCB-PKI-CA t.cer && certutil -encode t.cer t.pem && type t.pem >> corp-ca.pem`
 
 ---
 
@@ -59,7 +53,6 @@ pos-admin-web/
 │                            staff, devices, audit + partials
 ├── prisma/schema.prisma     SQLite (enum -> String, còn lại giữ nguyên)
 ├── test/*.test.mjs          59 test (money/validator/pin) — 59/59 PASS
-└── scripts/                 seed.ts, grab-proxy-ca.mjs, test-fetch.mjs, ...
 ```
 
 ---
@@ -103,7 +96,7 @@ pos-admin-web/
 ## 5. Trạng thái verify (đã chạy thật)
 
 - ✅ `npm install` (92 packages, argon2 native build OK trên Node 22.14)
-- ✅ `prisma generate` + `db push` → `data/pos.db` (qua proxy TCB, TLS verify BẬT)
+- ✅ `prisma generate` + `db push` → `data/pos.db`
 - ✅ **59/59 test PASS** (money 17 · order-validator 33 · pin-hasher 9)
 - ✅ `npm run seed` → 1 Quản lý + 4 món + 1 máy POS + 1 ca đóng + 2 đơn
 - ✅ HTTP: `/health` 200 · `/login` 200 · `/reports` chưa auth → 302 · sync pull chưa auth → 401
