@@ -64,33 +64,74 @@ registerSyncRoutes(app, prisma);
 // Web admin (manager session, server-rendered).
 registerAdminRoutes(app, prisma, config);
 
-async function ensureDefaultAdmin() {
+async function ensureDefaultStaff() {
+  const defaultAccounts = [
+    {
+      syncId: '00000000-0000-0000-0000-000000000001',
+      name: 'MinhQuan',
+      role: 'MANAGER' as const,
+      pinHash: 'uez3nFNbUfVDGHY3pZAtbblyFyBW7sarEoPytMc9Uto=',
+      pinSalt: 'sCUjGRuCsCg8aUcMVZGwYA==',
+    },
+    {
+      syncId: '00000000-0000-0000-0000-000000000002',
+      name: 'Dinh',
+      role: 'MANAGER' as const,
+      pinHash: 'Ad2TC2EwcWpjlcILLQj4P8VdiSwbHeRsdP02OihWQXU=',
+      pinSalt: 'TJPHYQnH46ubIGZYPmez4g==',
+    },
+    {
+      syncId: '00000000-0000-0000-0000-000000000003',
+      name: 'Loi',
+      role: 'MANAGER' as const,
+      pinHash: 'RBXYfYFNcbNdcX8H6bDGgTxhKcykHQUSENF473p/x60=',
+      pinSalt: 'TP0kx1KcnKxSpcOuRC+m2Q==',
+    },
+  ];
+
   try {
-    const existing = await prisma.staff.findFirst({ where: { name: 'admin' } });
-    if (!existing) {
-      const nowMs = Date.now();
-      await prisma.staff.create({
-        data: {
-          syncId: '00000000-0000-0000-0000-000000000001',
-          name: 'admin',
-          role: 'MANAGER',
-          pinHash: 'd2wU33qAewnhkWsrmYw5Bmu5FntgyQBg3Lzv4Rm57r4=',
-          pinSalt: 'bBelY1WiXT3ad21r9ltI0Q==',
-          active: true,
-          createdAtMs: BigInt(nowMs),
-          updatedAtMs: BigInt(nowMs),
-        },
+    const nowMs = Date.now();
+    for (const acc of defaultAccounts) {
+      const existing = await prisma.staff.findFirst({
+        where: { OR: [{ name: acc.name }, { syncId: acc.syncId }] }
       });
-      console.log('Default manager "admin" (password: hung1234) ready.');
+      if (!existing) {
+        await prisma.staff.create({
+          data: {
+            syncId: acc.syncId,
+            name: acc.name,
+            role: acc.role,
+            pinHash: acc.pinHash,
+            pinSalt: acc.pinSalt,
+            active: true,
+            createdAtMs: BigInt(nowMs),
+            updatedAtMs: BigInt(nowMs),
+          },
+        });
+        console.log(`Created default manager "${acc.name}" (password: 66668888)`);
+      } else {
+        await prisma.staff.update({
+          where: { id: existing.id },
+          data: {
+            name: acc.name,
+            role: acc.role,
+            pinHash: acc.pinHash,
+            pinSalt: acc.pinSalt,
+            active: true,
+            updatedAtMs: BigInt(nowMs),
+          },
+        });
+        console.log(`Updated default manager "${acc.name}" (password: 66668888)`);
+      }
     }
   } catch (err) {
-    console.error('Failed to ensure default admin account:', err);
+    console.error('Failed to ensure default staff accounts:', err);
   }
 }
 
 app.listen(config.port, config.host, async () => {
   console.log(`POS Admin (merged) running at http://localhost:${config.port}`);
-  await ensureDefaultAdmin();
+  await ensureDefaultStaff();
 });
 
 const shutdown = async (signal: string) => {
