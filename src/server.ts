@@ -63,8 +63,33 @@ registerSyncRoutes(app, prisma);
 // Web admin (manager session, server-rendered).
 registerAdminRoutes(app, prisma, config);
 
-app.listen(config.port, config.host, () => {
+async function ensureDefaultAdmin() {
+  try {
+    const existing = await prisma.staff.findFirst({ where: { name: 'admin' } });
+    if (!existing) {
+      const nowMs = Date.now();
+      await prisma.staff.create({
+        data: {
+          syncId: '00000000-0000-0000-0000-000000000001',
+          name: 'admin',
+          role: 'MANAGER',
+          pinHash: 'd2wU33qAewnhkWsrmYw5Bmu5FntgyQBg3Lzv4Rm57r4=',
+          pinSalt: 'bBelY1WiXT3ad21r9ltI0Q==',
+          active: true,
+          createdAtMs: BigInt(nowMs),
+          updatedAtMs: BigInt(nowMs),
+        },
+      });
+      console.log('Default manager "admin" (password: hung1234) ready.');
+    }
+  } catch (err) {
+    console.error('Failed to ensure default admin account:', err);
+  }
+}
+
+app.listen(config.port, config.host, async () => {
   console.log(`POS Admin (merged) running at http://localhost:${config.port}`);
+  await ensureDefaultAdmin();
 });
 
 const shutdown = async (signal: string) => {
