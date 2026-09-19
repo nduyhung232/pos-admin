@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Quán Nước — Quản trị</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .sidebar { min-height: 100vh; background: #1f2d3d; position: fixed; width: 230px; z-index: 1000; }
+    .sidebar .brand { padding: 16px 20px; color: #fff; }
+    .sidebar .brand small { color: #93a3b5; display: block; font-weight: normal; }
+    .sidebar a.nav-link { color: #d5dde5; padding: 11px 20px; display: block; text-decoration: none; }
+    .sidebar a.nav-link:hover, .sidebar a.nav-link.active { background: #2c3e50; color: #fff; }
+    .sidebar .signout { color: #f1948a; }
+    .main-content { margin-left: 230px; padding: 24px; min-height: 100vh; background: #f5f7fa; }
+    .stat-card { border-radius: 10px; padding: 18px; color: #fff; margin-bottom: 12px; }
+    @media (max-width: 767px) {
+      .sidebar { position: static; width: 100%; min-height: auto; }
+      .main-content { margin-left: 0; padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar d-flex flex-column">
+    <div class="brand fw-bold fs-6">
+      <i class="bi bi-cup-hot"></i> POS Quán Nước
+      <small><%= typeof session !== 'undefined' && session ? ('Quản trị · ' + session.name) : 'Quản trị' %></small>
+    </div>
+    <% const nav = [
+      ['reports', 'bi-bar-chart', 'Báo cáo doanh thu'],
+      ['orders', 'bi-receipt', 'Lịch sử đơn'],
+      ['shifts', 'bi-clock-history', 'Lịch sử ca'],
+      ['products', 'bi-box', 'Quản lý món'],
+      ['campaigns', 'bi-ticket-perforated', 'Mã giảm giá'],
+      ['staff', 'bi-people', 'Nhân viên'],
+      ['devices', 'bi-tablet', 'Máy POS'],
+      ['audit', 'bi-shield-check', 'Lịch sử thao tác']
+    ]; %>
+    <% nav.forEach(function(n){ %>
+      <a href="/<%= n[0] %>" class="nav-link <%= (typeof active !== 'undefined' && active === n[0]) ? 'active' : '' %>">
+        <i class="bi <%= n[1] %>"></i> <%= n[2] %>
+      </a>
+    <% }) %>
+    <a href="/logout" class="nav-link signout mt-auto"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
+  </div>
+  <div class="main-content">

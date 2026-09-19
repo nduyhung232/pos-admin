@@ -1,0 +1,53 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-tablet"></i> Máy POS</h4>
+
+<% if (created) { %>
+<div class="alert alert-success py-2"><i class="bi bi-check-circle"></i> Đã đăng ký máy. Nhập token vừa đặt vào máy POS (mục Đồng bộ) để kết nối.</div>
+<% } %>
+<% if (error) { %>
+<div class="alert alert-warning py-2">
+  <% if (error === 'token_policy') { %>Token phải dài tối thiểu <%= minTokenLength %> ký tự.
+  <% } else if (error === 'token_taken') { %>Token này đã được dùng cho máy khác. Chọn token khác.
+  <% } else { %>Dữ liệu không hợp lệ.<% } %>
+</div>
+<% } %>
+
+<div class="card mb-4">
+  <div class="card-header fw-bold">Đăng ký máy POS mới</div>
+  <div class="card-body">
+    <form method="post" action="/devices" class="row g-2">
+      <div class="col-md-4"><input name="name" class="form-control" placeholder="Tên máy (VD: Quầy 1)" required></div>
+      <div class="col-md-5">
+        <input name="token" class="form-control" placeholder="Token (tự đặt, tối thiểu <%= minTokenLength %> ký tự)" minlength="<%= minTokenLength %>" required>
+      </div>
+      <div class="col-md-3"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Đăng ký</button></div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">
+      <i class="bi bi-info-circle"></i> Token do bạn tự đặt. Máy POS dùng đúng token này để nói chuyện với server.
+      Server chỉ lưu bản băm (SHA-256) — không lưu token gốc, nên hãy ghi nhớ token khi đặt.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header fw-bold">Danh sách máy</div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light"><tr><th>Tên</th><th class="text-center">Hoạt động</th><th>Sync gần nhất</th><th>Tạo lúc</th></tr></thead>
+      <tbody>
+        <% devices.forEach(function(d){ %>
+        <tr>
+          <td><%= d.name %></td>
+          <td class="text-center"><span class="badge <%= d.active ? 'bg-success' : 'bg-secondary' %>"><%= d.active ? 'Bật' : 'Tắt' %></span></td>
+          <td><%= d.lastSeenAtMs ? new Date(d.lastSeenAtMs).toLocaleString('vi-VN') : 'Chưa từng' %></td>
+          <td><%= new Date(d.createdAtMs).toLocaleString('vi-VN') %></td>
+        </tr>
+        <% }) %>
+        <% if (!devices.length) { %><tr><td colspan="4" class="text-center text-muted">Chưa có máy nào</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

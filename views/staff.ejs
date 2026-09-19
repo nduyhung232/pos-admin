@@ -1,0 +1,85 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-people"></i> Nhân viên</h4>
+
+<% if (notice) { %>
+<div class="alert alert-success alert-dismissible py-2">
+  <i class="bi bi-check-circle"></i>
+  <% if (notice === 'created') { %>Đã thêm nhân viên.
+  <% } else { %>Thao tác thành công.<% } %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<% if (error) { %>
+<div class="alert alert-warning alert-dismissible py-2">
+  <i class="bi bi-exclamation-triangle"></i>
+  <% if (error === 'pin_policy') { %>PIN phải là 4–8 chữ số.
+  <% } else if (error === 'not_found') { %>Không tìm thấy nhân viên.
+  <% } else { %>Dữ liệu không hợp lệ (<%= error %>).<% } %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<div class="card mb-4">
+  <div class="card-header fw-bold">Thêm nhân viên</div>
+  <div class="card-body">
+    <form method="post" action="/staff" class="row g-2">
+      <div class="col-md-4"><input name="name" class="form-control" placeholder="Họ tên" required></div>
+      <div class="col-md-3">
+        <select name="role" class="form-select">
+          <option value="CASHIER">Thu ngân</option>
+          <option value="MANAGER">Quản lý</option>
+        </select>
+      </div>
+      <div class="col-md-3"><input name="pin" type="password" inputmode="numeric" minlength="4" maxlength="8" class="form-control" placeholder="PIN (4–8 số)" required></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card" data-batch-form data-endpoint="/staff">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-bold">Danh sách nhân viên</span>
+    <button type="button" class="btn btn-primary btn-sm" data-batch-save>
+      <i class="bi bi-save"></i> Lưu thay đổi
+    </button>
+  </div>
+  <div class="card-body">
+    <div data-batch-notice></div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light"><tr><th>Họ tên</th><th>Vai trò</th><th class="text-center">Hoạt động</th><th>Đổi PIN</th></tr></thead>
+        <tbody>
+          <% staff.forEach(function(s){ %>
+          <tr data-row data-syncid="<%= s.syncId %>">
+            <td><input data-field="name" value="<%= s.name %>" class="form-control form-control-sm" style="max-width:200px"></td>
+            <td>
+              <select data-field="role" class="form-select form-select-sm" style="max-width:130px">
+                <option value="CASHIER" <%= s.role === 'CASHIER' ? 'selected' : '' %>>Thu ngân</option>
+                <option value="MANAGER" <%= s.role === 'MANAGER' ? 'selected' : '' %>>Quản lý</option>
+              </select>
+            </td>
+            <td class="text-center">
+              <input class="form-check-input" type="checkbox" data-field="active" <%= s.active ? 'checked' : '' %>>
+            </td>
+            <td>
+              <input data-field="pin" data-writeonly type="password" inputmode="numeric" minlength="4" maxlength="8"
+                     class="form-control form-control-sm" placeholder="PIN mới (để trống nếu giữ nguyên)" style="max-width:220px">
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!staff.length) { %><tr><td colspan="4" class="text-center text-muted">Chưa có nhân viên</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<p class="text-muted small mt-2">
+  Sửa trực tiếp trên bảng rồi bấm <b>Lưu thay đổi</b> — chỉ những dòng bạn sửa mới được gửi lên.
+  PIN dùng PBKDF2 khớp máy POS; đổi PIN có hiệu lực trên máy POS sau lần đồng bộ kế tiếp.
+</p>
+
+<script src="/batch-save.js"></script>
+
+<%- include('partials/footer') %>

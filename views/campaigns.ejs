@@ -1,0 +1,62 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-ticket-perforated"></i> Mã giảm giá</h4>
+
+<% if (error) { %>
+<div class="alert alert-warning py-2">
+  <% if (error === 'unknown_device') { %>Máy POS không tồn tại hoặc đã bị khoá.
+  <% } else if (error === 'percent_range') { %>Phần trăm giảm phải ≤ 100.
+  <% } else { %>Dữ liệu không hợp lệ.<% } %>
+</div>
+<% } %>
+
+<div class="card mb-4">
+  <div class="card-header fw-bold">Tạo đợt mã (cấp cho MỘT máy POS)</div>
+  <div class="card-body">
+    <% if (!devices.length) { %>
+    <div class="alert alert-info small mb-0">Chưa có máy POS nào. Sang mục <a href="/devices">Máy POS</a> đăng ký trước khi tạo mã.</div>
+    <% } else { %>
+    <form method="post" action="/campaigns" class="row g-2">
+      <div class="col-md-3"><input name="name" class="form-control" placeholder="Tên đợt" required></div>
+      <div class="col-md-2">
+        <select name="valueType" class="form-select">
+          <option value="AMOUNT">Số tiền (đ)</option>
+          <option value="PERCENT">Phần trăm (%)</option>
+        </select>
+      </div>
+      <div class="col-md-2"><input name="value" type="number" min="1" step="1" class="form-control" placeholder="Giá trị" required></div>
+      <div class="col-md-2"><input name="count" type="number" min="1" max="5000" step="1" class="form-control" placeholder="Số lượng" required></div>
+      <div class="col-md-2">
+        <select name="deviceId" class="form-select">
+          <% devices.forEach(function(d){ %><option value="<%= d.id %>"><%= d.name %></option><% }) %>
+        </select>
+      </div>
+      <div class="col-md-1"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i></button></div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">Mã cấp cho một máy để đảm bảo dùng-một-lần khi offline. Mã của máy A không dùng được ở máy B.</p>
+    <% } %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header fw-bold">Các đợt mã</div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-sm mb-0">
+      <thead class="table-light"><tr><th>Tên</th><th>Loại</th><th class="text-end">Giá trị</th><th class="text-end">Số mã</th><th>Tạo lúc</th></tr></thead>
+      <tbody>
+        <% campaigns.forEach(function(c){ %>
+        <tr>
+          <td><%= c.name %></td>
+          <td><%= c.valueType === 'PERCENT' ? 'Phần trăm' : 'Số tiền' %></td>
+          <td class="text-end"><%= c.valueType === 'PERCENT' ? (c.value + '%') : (Number(c.value).toLocaleString('vi-VN') + ' đ') %></td>
+          <td class="text-end"><%= c.totalCodes %></td>
+          <td><%= new Date(c.createdAtMs).toLocaleString('vi-VN') %></td>
+        </tr>
+        <% }) %>
+        <% if (!campaigns.length) { %><tr><td colspan="5" class="text-center text-muted">Chưa có đợt mã</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

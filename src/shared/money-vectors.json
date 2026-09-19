@@ -1,0 +1,71 @@
+{
+  "$comment": [
+    "SHARED TEST VECTORS for money rounding. Read by BOTH the TypeScript test",
+    "(test/money.test.mjs) and the Kotlin test (MoneyVectorsTest).",
+    "Purpose: the POS app and the server each have their own Money implementation.",
+    "Two implementations of one rounding rule is how financial figures drift apart.",
+    "These vectors pin them together: if either side changes behaviour, a test fails.",
+    "Rule under test: round to whole VND, HALF_UP (>= 0.5 away from zero).",
+    "Do not edit a vector to make a test pass. Fix the implementation."
+  ],
+  "rule": "HALF_UP to whole VND",
+  "divide": [
+    { "amount": 100000, "divisor": 3, "expected": 33333, "note": "33333.33 -> down" },
+    { "amount": 100000, "divisor": 8, "expected": 12500, "note": "exact" },
+    { "amount": 7, "divisor": 2, "expected": 4, "note": "3.5 -> up (boundary)" },
+    { "amount": 5, "divisor": 2, "expected": 3, "note": "2.5 -> up (boundary)" },
+    { "amount": 4, "divisor": 2, "expected": 2, "note": "exact" },
+    { "amount": 1, "divisor": 3, "expected": 0, "note": "0.33 -> down" },
+    { "amount": 2, "divisor": 3, "expected": 1, "note": "0.67 -> up" },
+    { "amount": 0, "divisor": 5, "expected": 0, "note": "zero numerator" },
+    { "amount": -7, "divisor": 2, "expected": -4, "note": "-3.5 -> -4, by magnitude" },
+    { "amount": -5, "divisor": 2, "expected": -3, "note": "-2.5 -> -3, by magnitude" },
+    { "amount": -1, "divisor": 3, "expected": 0, "note": "-0.33 -> 0" },
+    { "amount": 45000, "divisor": 1, "expected": 45000, "note": "divide by one" },
+    { "amount": 999999, "divisor": 7, "expected": 142857, "note": "exact large" },
+    { "amount": 1000000, "divisor": 7, "expected": 142857, "note": "142857.14 -> down" },
+    { "amount": 1000003, "divisor": 7, "expected": 142858, "note": "142857.57 -> up" }
+  ],
+  "percentOf": [
+    { "amount": 45000, "percent": 15, "expected": 6750, "note": "exact" },
+    { "amount": 33000, "percent": 8, "expected": 2640, "note": "exact" },
+    { "amount": 45000, "percent": 0, "expected": 0, "note": "zero percent" },
+    { "amount": 45000, "percent": 100, "expected": 45000, "note": "full percent" },
+    { "amount": 45000, "percent": 8, "expected": 3600, "note": "exact" },
+    { "amount": 1000, "percent": 5, "expected": 50, "note": "exact" },
+    { "amount": 999, "percent": 5, "expected": 50, "note": "49.95 -> up" },
+    { "amount": 990, "percent": 5, "expected": 50, "note": "49.5 -> up (boundary)" },
+    { "amount": 989, "percent": 5, "expected": 49, "note": "49.45 -> down" },
+    { "amount": 35000, "percent": 33, "expected": 11550, "note": "exact" },
+    { "amount": 12345, "percent": 10, "expected": 1235, "note": "1234.5 -> up (boundary)" },
+    { "amount": 12344, "percent": 10, "expected": 1234, "note": "1234.4 -> down" },
+    { "amount": 0, "percent": 50, "expected": 0, "note": "zero amount" }
+  ],
+  "split": [
+    { "amount": 100000, "parts": 3, "expected": [33334, 33333, 33333], "note": "remainder 1 spread" },
+    { "amount": 10, "parts": 4, "expected": [3, 3, 2, 2], "note": "remainder 2 spread" },
+    { "amount": 100000, "parts": 1, "expected": [100000], "note": "single part" },
+    { "amount": 0, "parts": 3, "expected": [0, 0, 0], "note": "zero splits to zeros" },
+    { "amount": 1, "parts": 3, "expected": [1, 0, 0], "note": "one đồng to first share" },
+    { "amount": 45000, "parts": 2, "expected": [22500, 22500], "note": "even split" },
+    { "amount": 7, "parts": 7, "expected": [1, 1, 1, 1, 1, 1, 1], "note": "one each" },
+    { "amount": 5, "parts": 7, "expected": [1, 1, 1, 1, 1, 0, 0], "note": "fewer than parts" }
+  ],
+  "average": [
+    { "total": 100000, "count": 3, "expected": 33333, "note": "averageOrderValue" },
+    { "total": 0, "count": 0, "expected": 0, "note": "no orders -> 0, must not divide" },
+    { "total": 50000, "count": 0, "expected": 0, "note": "guard before divide" },
+    { "total": 45000, "count": 2, "expected": 22500, "note": "exact" }
+  ],
+  "knownDivergence": [
+    {
+      "function": "split",
+      "case": "negative amount",
+      "kotlinBehaviour": "does NOT preserve the sum: split(-10,4) = [-2,-2,-2,-2] = -8",
+      "cause": "Kotlin Int division truncates toward zero, so remainder is negative and the 'remainder > 0' branch never runs",
+      "typescriptBehaviour": "throws RangeError",
+      "status": "Kotlin side is a latent bug. Not currently exploitable: Money.split() has no caller in the app. Fix before using it to split a bill.",
+      "verifiedBy": "packages/shared/scripts/verify-kotlin-split.mjs"
+    }
+  ]
+}

@@ -1,0 +1,267 @@
+// Merged POS admin schema — SQLite edition.
+//
+// This is the Postgres schema from pos-admin, adapted to SQLite so the app runs
+// as a single self-contained process (like sales_web) with no external DB.
+//
+// CHANGES vs the Postgres original (behaviour preserved):
+//   * datasource provider  postgresql -> sqlite (url = file:./data/pos.db)
+//   * enums removed: SQLite via Prisma has no native enum. Enum columns become
+//     String. The ALLOWED VALUES are unchanged (e.g. 'CASHIER'/'MANAGER') and
+//     are still validated by zod at the API boundary, so the sync contract and
+//     the Android side see identical strings.
+//   * Everything else — fields, Int VND money, BigInt epoch ms, syncId UNIQUE,
+//     one-directional ownership, indexes, relations — is kept as-is.
+//
+// DESIGN NOTES (unchanged from the original):
+//  * Money: every amount is Int VND (whole đồng). Never Float/Double.
+//  * Identity: syncId (UUID) is the cross-device key, UNIQUE -> push idempotent.
+//  * Ownership is one-directional per table (removes sync conflicts):
+//      - Product / Staff / Campaign / DiscountCode : server owns, POS pulls
+//      - Order / OrderItem / Shift                 : POS owns, POS pushes
+//  * Historical rows carry their own name/price snapshots.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A POS terminal allowed to sync. Registered by a manager in the web admin.
+///
+/// AUTH (simplified): the manager chooses a token; the terminal sends it as
+/// `Authorization: Bearer <token>`. The token alone identifies the terminal —
+/// there is no separate deviceId. Only a SHA-256 hash of the token is stored.
+model Device {
+  id        Int      @id @default(autoincrement())
+  name      String
+  /// SHA-256 (hex) of the device's API token, chosen by the manager. UNIQUE so
+  /// the token can be looked up directly. The plaintext token is never stored.
+  tokenHash String   @unique
+  active    Boolean  @default(true)
+  lastSeenAtMs BigInt?
+  createdAtMs  BigInt
+
+  /// Cursor of the last successful pull, so pulls can be incremental.
+  pullCursorMs BigInt @default(0)
+
+  orders        Order[]
+  shifts        Shift[]
+  assignedCodes DiscountCode[]
+
+  @@index([active])
+}
+
+/// Menu item. Server-owned: edited in the web admin, pulled by every terminal.
+model Product {
+  id          Int      @id @default(autoincrement())
+  syncId      String   @unique
+  name        String
+  /// Integer VND.
+  price       Int
+  category    String
+  /// Soft delete: keeps historical orders explainable.
+  active      Boolean  @default(true)
+  createdAtMs BigInt
+  updatedAtMs BigInt
+
+  orderItems OrderItem[]
+
+  @@index([active])
+  @@index([updatedAtMs])
+}
+
+/// Staff member. Server-owned; terminals pull the credential material so they
+/// can authenticate while offline.
+///
+/// `role` holds 'CASHIER' | 'MANAGER' (was enum StaffRole).
+///
+/// SECURITY: pinHash/pinSalt are a PBKDF2-HMAC-SHA256 derivation produced with
+/// the SAME parameters as the Android `PinHasher` (120_000 iterations,
+/// SHA-256, 256-bit key, 16-byte salt) so a PIN set in the web admin verifies on
+/// the terminal. These two columns must never be returned to a browser.
+model Staff {
+  id          Int       @id @default(autoincrement())
+  syncId      String    @unique
+  name        String
+  role        String
+  pinHash     String
+  pinSalt     String
+  active      Boolean   @default(true)
+  createdAtMs BigInt
+  updatedAtMs BigInt
+
+  @@index([active])
+  @@index([updatedAtMs])
+}
+
+/// A batch of single-use codes sharing one value.
+/// `valueType` holds 'AMOUNT' | 'PERCENT' (was enum DiscountValueType).
+model Campaign {
+  id          Int    @id @default(autoincrement())
+  syncId      String @unique
+  name        String
+  valueType   String
+  /// VND when AMOUNT, percent 1..100 when PERCENT.
+  value       Int
+  createdAtMs BigInt
+
+  codes DiscountCode[]
+}
+
+/// A single-use discount code.
+///
+/// IMPORTANT: `assignedDeviceId` partitions codes across terminals. A code is
+/// only ever handed to one device, which is what lets the terminal consume it
+/// offline and still guarantee single use. `consumedByOrderSyncId` records where
+/// it was spent, reported back on the next push.
+model DiscountCode {
+  id         Int      @id @default(autoincrement())
+  syncId     String   @unique
+  code       String   @unique
+  campaignId Int
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  assignedDeviceId Int?
+  assignedDevice   Device? @relation(fields: [assignedDeviceId], references: [id], onDelete: SetNull)
+  assignedAtMs     BigInt?
+
+  consumed              Boolean @default(false)
+  consumedByOrderSyncId String?
+  consumedAtMs          BigInt?
+
+  @@index([campaignId])
+  @@index([assignedDeviceId, consumed])
+}
+
+/// A cashier shift pushed up from a terminal.
+/// `status` holds 'OPEN' | 'CLOSED' (was enum ShiftStatus).
+///
+/// expectedCash = openingCash + cash sales; cashDifference = counted - expected.
+/// Stored as pushed (not recomputed) so the reconciliation evidence is preserved
+/// exactly as the terminal recorded it.
+model Shift {
+  id     Int    @id @default(autoincrement())
+  syncId String @unique
+
+  deviceId Int
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  openedAtMs  BigInt
+  closedAtMs  BigInt?
+  /// Integer VND.
+  openingCash    Int
+  countedCash    Int?
+  expectedCash   Int?
+  cashDifference Int?
+  /// Note-by-note count, e.g. "500000x2;100000x5" — audit evidence.
+  cashBreakdown  String?
+  status         String
+
+  staffSyncId         String?
+  staffName           String?
+  closedByStaffSyncId String?
+
+  /// When the server durably stored this record.
+  receivedAtMs BigInt
+
+  orders Order[]
+
+  @@index([deviceId])
+  @@index([openedAtMs])
+  @@index([status])
+}
+
+/// A completed order pushed up from a terminal.
+/// `status` holds 'PAID' | 'CANCELLED', `orderType` 'DINE_IN' | 'TAKE_AWAY',
+/// `paymentMethod` 'CASH' | 'TRANSFER' | 'CARD', `discountType`
+/// 'NONE' | 'AMOUNT' | 'PERCENT' | 'CODE' (were enums).
+///
+/// Totals are stored, never recomputed from products, so a later price change
+/// cannot alter history. The push endpoint re-verifies the arithmetic
+/// (subtotal - discountAmount == total, and items sum to subtotal) and rejects
+/// anything inconsistent rather than storing figures it cannot defend.
+model Order {
+  id     Int    @id @default(autoincrement())
+  syncId String @unique
+
+  deviceId Int
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  /// Integer VND.
+  subtotal       Int
+  discountAmount Int
+  total          Int
+
+  discountType  String @default("NONE")
+  discountInput Int    @default(0)
+  discountCode  String?
+
+  orderType     String
+  paymentMethod String
+  cashReceived  Int
+  changeAmount  Int
+  status        String
+  createdAtMs   BigInt
+
+  shiftId Int?
+  shift   Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  /// Kept even when the shift row has not arrived yet (pushes can be out of order).
+  shiftSyncId String?
+
+  staffSyncId String?
+  staffName   String?
+
+  cancelledByStaffSyncId String?
+  cancelledAtMs          BigInt?
+
+  /// When the server durably stored this record.
+  receivedAtMs BigInt
+
+  items OrderItem[]
+
+  @@index([deviceId])
+  @@index([createdAtMs])
+  @@index([status, createdAtMs])
+  @@index([shiftId])
+}
+
+/// A line inside an order. productName/unitPrice are snapshots from sale time.
+model OrderItem {
+  id     Int    @id @default(autoincrement())
+  syncId String @unique
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Nullable: the product may have been deleted, or created on another device.
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productSyncId String?
+
+  productName String
+  /// Integer VND, snapshot.
+  unitPrice   Int
+  quantity    Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// Append-only audit log for actions taken in the web admin.
+model AuditLog {
+  id         Int    @id @default(autoincrement())
+  atMs       BigInt
+  /// syncId of the staff member who acted, or "system".
+  actor      String
+  action     String
+  entityType String
+  entityId   String
+  /// JSON detail. Must never contain PIN material.
+  detail     String?
+
+  @@index([atMs])
+  @@index([entityType, entityId])
+}

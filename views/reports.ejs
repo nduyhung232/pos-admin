@@ -1,0 +1,77 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-bar-chart"></i> Báo cáo doanh thu</h4>
+
+<form class="row g-2 mb-4" style="max-width:520px">
+  <div class="col"><input type="date" name="from" class="form-control" value="<%= fromDate %>"></div>
+  <div class="col"><input type="date" name="to" class="form-control" value="<%= toDate %>"></div>
+  <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-search"></i> Lọc</button></div>
+</form>
+
+<p class="text-muted small">Chỉ tính đơn <strong>PAID</strong>. Đơn đã huỷ giữ lại để audit nhưng không tính vào doanh thu.</p>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="stat-card" style="background:#27ae60">
+      <div class="small">Tổng doanh thu</div>
+      <div class="fs-5 fw-bold"><%= Number(totalRevenue).toLocaleString('vi-VN') %> đ</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card" style="background:#2980b9">
+      <div class="small">Số đơn</div>
+      <div class="fs-5 fw-bold"><%= totalOrders %></div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card" style="background:#8e44ad">
+      <div class="small">Giá trị đơn TB</div>
+      <div class="fs-5 fw-bold"><%= Number(averageOrderValue).toLocaleString('vi-VN') %> đ</div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <div class="card-header fw-bold">Theo phương thức thanh toán</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Phương thức</th><th class="text-end">Số đơn</th><th class="text-end">Doanh thu</th></tr></thead>
+          <tbody>
+            <% byMethod.forEach(function(m){ %>
+            <tr>
+              <td><%= m.paymentMethod %></td>
+              <td class="text-end"><%= m.orderCount %></td>
+              <td class="text-end"><%= Number(m.revenue).toLocaleString('vi-VN') %> đ</td>
+            </tr>
+            <% }) %>
+            <% if (!byMethod.length) { %><tr><td colspan="3" class="text-center text-muted">Không có dữ liệu</td></tr><% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div class="card mb-3">
+      <div class="card-header fw-bold">Top món bán chạy</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Món</th><th class="text-end">SL</th><th class="text-end">Doanh thu</th></tr></thead>
+          <tbody>
+            <% topProducts.forEach(function(p){ %>
+            <tr>
+              <td><%= p.productName %></td>
+              <td class="text-end"><%= p.quantity %></td>
+              <td class="text-end"><%= Number(p.revenue).toLocaleString('vi-VN') %> đ</td>
+            </tr>
+            <% }) %>
+            <% if (!topProducts.length) { %><tr><td colspan="3" class="text-center text-muted">Không có dữ liệu</td></tr><% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,37 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-receipt"></i> Lịch sử đơn <span class="text-muted fs-6">(<%= total %> đơn)</span></h4>
+
+<form class="row g-2 mb-4" style="max-width:520px">
+  <div class="col"><input type="date" name="from" class="form-control" value="<%= fromDate %>"></div>
+  <div class="col"><input type="date" name="to" class="form-control" value="<%= toDate %>"></div>
+  <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-search"></i> Lọc</button></div>
+</form>
+
+<div class="card">
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Thời gian</th><th>Máy</th><th>NV</th><th>Loại</th><th>TT</th><th class="text-end">Giảm</th><th class="text-end">Tổng</th><th>Trạng thái</th><th>Món</th></tr>
+      </thead>
+      <tbody>
+        <% orders.forEach(function(o){ %>
+        <tr>
+          <td><%= new Date(o.createdAtMs).toLocaleString('vi-VN') %></td>
+          <td><%= o.deviceName %></td>
+          <td><%= o.staffName || '—' %></td>
+          <td><%= o.orderType === 'DINE_IN' ? 'Tại chỗ' : 'Mang về' %></td>
+          <td><%= o.paymentMethod %></td>
+          <td class="text-end"><%= Number(o.discountAmount).toLocaleString('vi-VN') %></td>
+          <td class="text-end fw-semibold"><%= Number(o.total).toLocaleString('vi-VN') %> đ</td>
+          <td><span class="badge <%= o.status === 'PAID' ? 'bg-success' : 'bg-danger' %>"><%= o.status %></span></td>
+          <td class="small text-muted"><%= o.items.map(function(i){ return i.productName + ' x' + i.quantity; }).join(', ') %></td>
+        </tr>
+        <% }) %>
+        <% if (!orders.length) { %><tr><td colspan="9" class="text-center text-muted">Không có đơn trong khoảng này</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

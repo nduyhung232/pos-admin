@@ -1,0 +1,82 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-box"></i> Quản lý món</h4>
+
+<% if (notice) { %>
+<div class="alert alert-success alert-dismissible py-2">
+  <i class="bi bi-check-circle"></i>
+  <% if (notice === 'created') { %>Đã thêm món.
+  <% } else { %>Thao tác thành công.<% } %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<% if (error) { %>
+<div class="alert alert-warning alert-dismissible py-2">
+  <i class="bi bi-exclamation-triangle"></i>
+  <% if (error === 'not_found') { %>Không tìm thấy món.
+  <% } else { %>Dữ liệu không hợp lệ (<%= error %>).<% } %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<div class="card mb-4">
+  <div class="card-header fw-bold">Thêm món</div>
+  <div class="card-body">
+    <form method="post" action="/products" class="row g-2">
+      <div class="col-md-4"><input name="name" class="form-control" placeholder="Tên món" required></div>
+      <div class="col-md-3"><input name="category" class="form-control" placeholder="Danh mục" required></div>
+      <div class="col-md-3">
+        <div class="input-group">
+          <input name="price" type="number" min="0" step="1" class="form-control" placeholder="Giá (VND)" required>
+          <span class="input-group-text">đ</span>
+        </div>
+      </div>
+      <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card" data-batch-form data-endpoint="/products">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-bold">Danh sách món</span>
+    <button type="button" class="btn btn-primary btn-sm" data-batch-save>
+      <i class="bi bi-save"></i> Lưu thay đổi
+    </button>
+  </div>
+  <div class="card-body">
+    <div data-batch-notice></div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr><th>Tên</th><th>Danh mục</th><th class="text-end">Giá</th><th class="text-center">Trạng thái</th></tr>
+        </thead>
+        <tbody>
+          <% products.forEach(function(p){ %>
+          <tr data-row data-syncid="<%= p.syncId %>">
+            <td><input data-field="name" value="<%= p.name %>" class="form-control form-control-sm"></td>
+            <td><input data-field="category" value="<%= p.category %>" class="form-control form-control-sm"></td>
+            <td style="max-width:150px">
+              <div class="input-group input-group-sm">
+                <input data-field="price" type="number" min="0" step="1" value="<%= p.price %>" class="form-control text-end">
+                <span class="input-group-text">đ</span>
+              </div>
+            </td>
+            <td class="text-center">
+              <input class="form-check-input" type="checkbox" data-field="active" <%= p.active ? 'checked' : '' %>>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!products.length) { %><tr><td colspan="4" class="text-center text-muted">Chưa có món</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<p class="text-muted small mt-2">
+  Sửa trực tiếp trên bảng rồi bấm <b>Lưu thay đổi</b> — chỉ những dòng bạn sửa mới được gửi lên.
+</p>
+
+<script src="/batch-save.js"></script>
+
+<%- include('partials/footer') %>
