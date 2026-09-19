@@ -23,22 +23,40 @@
           Chưa có tài khoản Quản lý. Chạy <code>npm run seed</code> để tạo tài khoản đầu tiên.
         </div>
         <% } else { %>
-        <form method="post" action="/login">
+        <form method="post" action="/login" autocomplete="off">
           <div class="mb-3">
             <label class="form-label">Quản lý</label>
-            <select name="staffSyncId" class="form-select" required>
+            <select name="staffSyncId" id="staffSelect" class="form-select" required autocomplete="off">
               <% managers.forEach(function(m){ %>
-              <option value="<%= m.syncId %>"><%= m.name %></option>
+              <option value="<%= m.syncId %>" <%= (typeof selectedId !== 'undefined' && selectedId === m.syncId) ? 'selected' : '' %>><%= m.name %></option>
               <% }) %>
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Mã PIN</label>
-            <input type="password" name="pin" class="form-control" inputmode="numeric"
-                   autocomplete="off" minlength="4" maxlength="8" required>
+            <input type="password" name="pin" id="pinInput" class="form-control" inputmode="numeric"
+                   autocomplete="new-password" minlength="4" maxlength="8" required>
           </div>
           <button class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-right"></i> Đăng nhập</button>
         </form>
+        <script>
+          const staffSelect = document.getElementById('staffSelect');
+          const pinInput = document.getElementById('pinInput');
+          if (staffSelect && pinInput) {
+            // Khi đổi tài khoản trong dropdown, lập tức xóa mã PIN cũ
+            staffSelect.addEventListener('change', function() {
+              pinInput.value = '';
+              pinInput.focus();
+            });
+            // Xóa mã PIN khi trang load hoặc khôi phục từ back/forward cache
+            window.addEventListener('pageshow', function() {
+              pinInput.value = '';
+            });
+            window.addEventListener('DOMContentLoaded', function() {
+              pinInput.value = '';
+            });
+          }
+        </script>
         <% } %>
       </div>
     </div>

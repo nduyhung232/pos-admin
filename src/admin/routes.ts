@@ -82,16 +82,26 @@ function monthStartStr(): string {
 export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: Config): void {
   // ---- Auth ----------------------------------------------------------------
 
+  const setNoCache = (res: Response) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
+  };
+
   app.get('/login', async (_req: Request, res: Response) => {
+    setNoCache(res);
     const managers = await prisma.staff.findMany({
       where: { active: true, role: 'MANAGER' },
       select: { syncId: true, name: true },
       orderBy: { name: 'asc' },
     });
-    res.render('login', { managers, error: null });
+    res.render('login', { managers, error: null, selectedId: null });
   });
 
   app.post('/login', async (req: Request, res: Response) => {
+    setNoCache(res);
     const schema = z.object({
       staffSyncId: z.string().uuid(),
       pin: z.string().min(4).max(8),
@@ -104,7 +114,11 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         select: { syncId: true, name: true },
         orderBy: { name: 'asc' },
       });
-      res.status(401).render('login', { managers, error: 'Sai thông tin đăng nhập' });
+      res.status(401).render('login', {
+        managers,
+        error: 'Sai thông tin đăng nhập',
+        selectedId: req.body?.staffSyncId || null,
+      });
     };
 
     if (!parsed.success) return renderError();
@@ -127,20 +141,24 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       return renderError();
     }
 
-    setSessionStaff(req, staff.syncId);
-    await audit(prisma, staff.syncId, 'login', 'staff', staff.syncId);
-    res.redirect('/reports');
+    req.session.regenerate(async (err) => {
+      if (err) {
+        req.log?.error?.(err, 'session regenerate failed');
+      }
+      setSessionStaff(req, staff.syncId);
+      await audit(prisma, staff.syncId, 'login', 'staff', staff.syncId);
+      res.redirect('/reports');
+    });
   });
 
-  app.post('/logout', (req: Request, res: Response) => {
-    clearSession(req);
+  const handleLogout = async (req: Request, res: Response) => {
+    setNoCache(res);
+    await clearSession(req, res);
     res.redirect('/login');
-  });
-  // GET convenience for the sidebar link.
-  app.get('/logout', (req: Request, res: Response) => {
-    clearSession(req);
-    res.redirect('/login');
-  });
+  };
+
+  app.post('/logout', handleLogout);
+  app.get('/logout', handleLogout);
 
   app.get('/', (_req: Request, res: Response) => res.redirect('/reports'));
 

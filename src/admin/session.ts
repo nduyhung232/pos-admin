@@ -28,9 +28,19 @@ export function setSessionStaff(req: Request, staffSyncId: string): void {
   (req.session as unknown as { staffSyncId?: string }).staffSyncId = staffSyncId;
 }
 
-export function clearSession(req: Request): void {
-  // express-session: destroy drops the whole session server-side.
-  req.session?.destroy?.(() => undefined);
+export function clearSession(req: Request, res?: Response): Promise<void> {
+  return new Promise((resolve) => {
+    if (res) {
+      res.clearCookie('connect.sid', { path: '/' });
+    }
+    if (req.session) {
+      req.session.destroy(() => {
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
 }
 
 function sessionStaffId(req: Request): string | null {
