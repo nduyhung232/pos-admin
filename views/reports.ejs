@@ -1,77 +1,750 @@
 <%- include('partials/header') %>
 
-<h4 class="mb-3"><i class="bi bi-bar-chart"></i> Báo cáo doanh thu</h4>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-<form class="row g-2 mb-4" style="max-width:520px">
-  <div class="col"><input type="date" name="from" class="form-control" value="<%= fromDate %>"></div>
-  <div class="col"><input type="date" name="to" class="form-control" value="<%= toDate %>"></div>
-  <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-search"></i> Lọc</button></div>
-</form>
+<style>
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1e293b;
+    background-color: #f8fafc;
+  }
+  .dashboard-header {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    margin-bottom: 24px;
+  }
+  .filter-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    background: #f1f5f9;
+    display: inline-block;
+  }
+  .filter-pill:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: translateY(-1px);
+  }
+  .filter-pill.active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+  }
+  .stat-card-modern {
+    border-radius: 16px;
+    padding: 20px;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    height: 100%;
+  }
+  .stat-card-modern:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.15);
+  }
+  .stat-card-modern .card-icon-bg {
+    position: absolute;
+    right: -10px;
+    bottom: -15px;
+    font-size: 80px;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .card-box {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.04);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .card-box-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-box-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-box-body {
+    padding: 20px;
+  }
+  .table-custom th {
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: none;
+    padding: 12px 16px;
+  }
+  .table-custom td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    font-size: 13.5px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .badge-method {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-cash { background: #dcfce7; color: #15803d; }
+  .badge-transfer { background: #dbeafe; color: #1d4ed8; }
+  .badge-card { background: #f3e8ff; color: #7e22ce; }
+  .badge-dinein { background: #ccfbf1; color: #0f766e; }
+  .badge-takeaway { background: #ffedd5; color: #c2410c; }
+  .rank-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .rank-1 { background: #fef08a; color: #854d0e; }
+  .rank-2 { background: #e2e8f0; color: #334155; }
+  .rank-3 { background: #fed7aa; color: #9a3412; }
+  .rank-other { background: #f1f5f9; color: #64748b; }
+</style>
 
-<p class="text-muted small">Chỉ tính đơn <strong>PAID</strong>. Đơn đã huỷ giữ lại để audit nhưng không tính vào doanh thu.</p>
-
-<div class="row mb-4">
-  <div class="col-md-4">
-    <div class="stat-card" style="background:#27ae60">
-      <div class="small">Tổng doanh thu</div>
-      <div class="fs-5 fw-bold"><%= Number(totalRevenue).toLocaleString('vi-VN') %> đ</div>
+<!-- DASHBOARD TOP HEADER & FILTER BAR -->
+<div class="dashboard-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <div>
+      <h4 class="fw-bold mb-1" style="color:#0f172a">
+        <i class="bi bi-bar-chart-fill text-primary"></i> Báo cáo doanh thu & Tổng quan Dashboard
+      </h4>
+      <p class="text-muted small mb-0">
+        Khoảng dữ liệu: <strong><%= fromDate %></strong> đến <strong><%= toDate %></strong> (Giờ Việt Nam UTC+07)
+      </p>
+    </div>
+    
+    <!-- Quick filter pills -->
+    <div class="d-flex flex-wrap gap-2">
+      <a href="/reports?preset=today" class="filter-pill <%= activePreset === 'today' ? 'active' : '' %>">
+        <i class="bi bi-calendar-event"></i> Hôm nay
+      </a>
+      <a href="/reports?preset=yesterday" class="filter-pill <%= activePreset === 'yesterday' ? 'active' : '' %>">
+        Hôm qua
+      </a>
+      <a href="/reports?preset=last7days" class="filter-pill <%= activePreset === 'last7days' ? 'active' : '' %>">
+        7 ngày qua
+      </a>
+      <a href="/reports?preset=thismonth" class="filter-pill <%= activePreset === 'thismonth' ? 'active' : '' %>">
+        Tháng này
+      </a>
+      <a href="/reports?preset=lastmonth" class="filter-pill <%= activePreset === 'lastmonth' ? 'active' : '' %>">
+        Tháng trước
+      </a>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="stat-card" style="background:#2980b9">
-      <div class="small">Số đơn</div>
-      <div class="fs-5 fw-bold"><%= totalOrders %></div>
+
+  <!-- Custom date picker range form -->
+  <form method="GET" action="/reports" class="row g-2 align-items-center pt-2 border-top">
+    <div class="col-auto text-muted small fw-semibold">
+      <i class="bi bi-funnel"></i> Tùy chọn ngày:
+    </div>
+    <div class="col-sm-3 col-6">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-light text-muted">Từ</span>
+        <input type="date" name="from" class="form-control" value="<%= fromDate %>" required>
+      </div>
+    </div>
+    <div class="col-sm-3 col-6">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-light text-muted">Đến</span>
+        <input type="date" name="to" class="form-control" value="<%= toDate %>" required>
+      </div>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-sm btn-primary px-3 fw-semibold">
+        <i class="bi bi-search"></i> Lọc dữ liệu
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- KEY METRIC KPI CARDS (6 CARDS) -->
+<div class="row g-3 mb-4">
+  <!-- Card 1: Doanh thu thực tế -->
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="stat-card-modern" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+      <div class="small text-uppercase fw-semibold" style="letter-spacing:0.5px; opacity:0.9">Doanh thu thực</div>
+      <div class="fs-4 fw-bolder mt-1 mb-1"><%= Number(totalRevenue).toLocaleString('vi-VN') %> đ</div>
+      <div class="small" style="opacity:0.85; font-size:11.5px">
+        Gộp: <%= Number(totalGross).toLocaleString('vi-VN') %> đ
+      </div>
+      <i class="bi bi-cash-stack card-icon-bg"></i>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="stat-card" style="background:#8e44ad">
-      <div class="small">Giá trị đơn TB</div>
-      <div class="fs-5 fw-bold"><%= Number(averageOrderValue).toLocaleString('vi-VN') %> đ</div>
+
+  <!-- Card 2: Số đơn hoàn thành -->
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="stat-card-modern" style="background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);">
+      <div class="small text-uppercase fw-semibold" style="letter-spacing:0.5px; opacity:0.9">Số đơn bán</div>
+      <div class="fs-4 fw-bolder mt-1 mb-1"><%= totalOrders %> <span class="fs-6 fw-normal">đơn</span></div>
+      <div class="small" style="opacity:0.85; font-size:11.5px">
+        TB: <%= averageItemsPerOrder %> món / đơn
+      </div>
+      <i class="bi bi-receipt-cutoff card-icon-bg"></i>
+    </div>
+  </div>
+
+  <!-- Card 3: Giá trị đơn TB (AOV) -->
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="stat-card-modern" style="background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);">
+      <div class="small text-uppercase fw-semibold" style="letter-spacing:0.5px; opacity:0.9">Giá trị đơn TB</div>
+      <div class="fs-4 fw-bolder mt-1 mb-1"><%= Number(averageOrderValue).toLocaleString('vi-VN') %> đ</div>
+      <div class="small" style="opacity:0.85; font-size:11.5px">
+        Doanh thu / số đơn
+      </div>
+      <i class="bi bi-calculator card-icon-bg"></i>
+    </div>
+  </div>
+
+  <!-- Card 4: Tổng tiền giảm giá -->
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="stat-card-modern" style="background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);">
+      <div class="small text-uppercase fw-semibold" style="letter-spacing:0.5px; opacity:0.9">Tiền giảm giá</div>
+      <div class="fs-4 fw-bolder mt-1 mb-1"><%= Number(totalDiscount).toLocaleString('vi-VN') %> đ</div>
+      <div class="small" style="opacity:0.85; font-size:11.5px">
+        Chiếm <%= discountRate %>% doanh số
+      </div>
+      <i class="bi bi-tag-fill card-icon-bg"></i>
+    </div>
+  </div>
+
+  <!-- Card 5: Tổng số món đã bán -->
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="stat-card-modern" style="background: linear-gradient(135deg, #0e7490 0%, #06b6d4 100%);">
+      <div class="small text-uppercase fw-semibold" style="letter-spacing:0.5px; opacity:0.9">Số ly / món bán</div>
+      <div class="fs-4 fw-bolder mt-1 mb-1"><%= totalItemsSold %> <span class="fs-6 fw-normal">món</span></div>
+      <div class="small" style="opacity:0.85; font-size:11.5px">
+        Tổng số lượng sản phẩm
+      </div>
+      <i class="bi bi-cup-straw card-icon-bg"></i>
+    </div>
+  </div>
+
+  <!-- Card 6: Đơn huỷ & Thất thoát -->
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="stat-card-modern" style="background: linear-gradient(135deg, #be123c 0%, #f43f5e 100%);">
+      <div class="small text-uppercase fw-semibold" style="letter-spacing:0.5px; opacity:0.9">Đơn đã huỷ</div>
+      <div class="fs-4 fw-bolder mt-1 mb-1"><%= totalCancelled %> <span class="fs-6 fw-normal">đơn</span></div>
+      <div class="small" style="opacity:0.85; font-size:11.5px">
+        Tỷ lệ huỷ: <%= cancellationRate %>%
+      </div>
+      <i class="bi bi-x-circle-fill card-icon-bg"></i>
     </div>
   </div>
 </div>
 
-<div class="row">
-  <div class="col-md-5">
-    <div class="card mb-3">
-      <div class="card-header fw-bold">Theo phương thức thanh toán</div>
-      <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-          <thead><tr><th>Phương thức</th><th class="text-end">Số đơn</th><th class="text-end">Doanh thu</th></tr></thead>
-          <tbody>
-            <% byMethod.forEach(function(m){ %>
+<!-- ROW CHARTS 1: TIMELINE TREND & PAYMENT / ORDER TYPE DOUGHNUTS -->
+<div class="row g-3 mb-4">
+  <!-- Biểu đồ Xu hướng doanh thu & số đơn -->
+  <div class="col-lg-8">
+    <div class="card-box h-100">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-graph-up text-primary"></i> 
+          <%= isSingleDay ? 'Biểu đồ doanh thu theo giờ trong ngày' : 'Biểu đồ xu hướng doanh thu & số lượng đơn theo ngày' %>
+        </h5>
+        <span class="badge bg-light text-secondary border">Interactive</span>
+      </div>
+      <div class="card-box-body">
+        <div style="height: 320px; position: relative;">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cơ cấu thanh toán & Hình thức phục vụ -->
+  <div class="col-lg-4">
+    <div class="card-box h-100 d-flex flex-column">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-pie-chart text-success"></i> Cơ cấu bán hàng & Thanh toán
+        </h5>
+      </div>
+      <div class="card-box-body flex-grow-1 d-flex flex-column justify-content-around">
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold small text-muted">Phương thức thanh toán</span>
+          </div>
+          <div style="height: 140px; position: relative;">
+            <canvas id="paymentChart"></canvas>
+          </div>
+        </div>
+        <hr class="my-2 text-muted opacity-25">
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold small text-muted">Hình thức phục vụ</span>
+          </div>
+          <div style="height: 140px; position: relative;">
+            <canvas id="orderTypeChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW CHARTS 2: PEAK HOURS & CATEGORY BREAKDOWN -->
+<div class="row g-3 mb-4">
+  <!-- Khung giờ cao điểm -->
+  <div class="col-lg-6">
+    <div class="card-box h-100">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-clock-history text-warning"></i> Phân bổ doanh thu theo khung giờ (Giờ cao điểm)
+        </h5>
+        <span class="badge bg-warning-subtle text-warning-emphasis">07:00 - 23:00</span>
+      </div>
+      <div class="card-box-body">
+        <div style="height: 280px; position: relative;">
+          <canvas id="hourlyChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Doanh thu theo danh mục món -->
+  <div class="col-lg-6">
+    <div class="card-box h-100">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-tags-fill text-info"></i> Doanh thu theo danh mục món
+        </h5>
+      </div>
+      <div class="card-box-body">
+        <div style="height: 280px; position: relative;">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW TABLES: TOP PRODUCTS, STAFF PERFORMANCE & CASH RECONCILIATION -->
+<div class="row g-3 mb-4">
+  <!-- Bảng Top món bán chạy nhất -->
+  <div class="col-lg-7">
+    <div class="card-box">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-trophy-fill text-warning"></i> Top 10 Món bán chạy nhất
+        </h5>
+        <span class="text-muted small">Xếp theo số lượng</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-custom mb-0">
+          <thead>
             <tr>
-              <td><%= m.paymentMethod %></td>
-              <td class="text-end"><%= m.orderCount %></td>
-              <td class="text-end"><%= Number(m.revenue).toLocaleString('vi-VN') %> đ</td>
+              <th style="width: 50px;">#</th>
+              <th>Món</th>
+              <th>Danh mục</th>
+              <th class="text-end">Đã bán</th>
+              <th class="text-end">Doanh thu</th>
+              <th style="width: 130px;">Tỷ trọng</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% topProducts.forEach(function(p, idx){ %>
+            <tr>
+              <td>
+                <span class="rank-badge <%= idx === 0 ? 'rank-1' : (idx === 1 ? 'rank-2' : (idx === 2 ? 'rank-3' : 'rank-other')) %>">
+                  <%= idx + 1 %>
+                </span>
+              </td>
+              <td class="fw-semibold text-dark"><%= p.productName %></td>
+              <td><span class="badge bg-light text-secondary border"><%= p.category %></span></td>
+              <td class="text-end fw-bold text-primary"><%= p.quantity %></td>
+              <td class="text-end fw-semibold"><%= Number(p.revenue).toLocaleString('vi-VN') %> đ</td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-grow-1" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: <%= p.percent %>%;"></div>
+                  </div>
+                  <span class="small text-muted" style="font-size:11px; min-width:32px;"><%= p.percent %>%</span>
+                </div>
+              </td>
             </tr>
             <% }) %>
-            <% if (!byMethod.length) { %><tr><td colspan="3" class="text-center text-muted">Không có dữ liệu</td></tr><% } %>
+            <% if (!topProducts.length) { %>
+            <tr><td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu bán hàng trong khoảng thời gian này</td></tr>
+            <% } %>
           </tbody>
         </table>
       </div>
     </div>
   </div>
-  <div class="col-md-7">
-    <div class="card mb-3">
-      <div class="card-header fw-bold">Top món bán chạy</div>
-      <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-          <thead><tr><th>Món</th><th class="text-end">SL</th><th class="text-end">Doanh thu</th></tr></thead>
-          <tbody>
-            <% topProducts.forEach(function(p){ %>
+
+  <!-- Bảng Hiệu suất theo nhân viên & Đối soát tiền mặt -->
+  <div class="col-lg-5">
+    <!-- Hiệu suất nhân viên -->
+    <div class="card-box mb-3">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-people-fill text-primary"></i> Hiệu suất theo thu ngân
+        </h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-custom mb-0">
+          <thead>
             <tr>
-              <td><%= p.productName %></td>
-              <td class="text-end"><%= p.quantity %></td>
-              <td class="text-end"><%= Number(p.revenue).toLocaleString('vi-VN') %> đ</td>
+              <th>Thu ngân</th>
+              <th class="text-end">Số đơn</th>
+              <th class="text-end">Doanh thu</th>
+              <th class="text-end">Đơn TB</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% byStaff.forEach(function(s){ %>
+            <tr>
+              <td class="fw-semibold">
+                <i class="bi bi-person-circle text-secondary me-1"></i> <%= s.staffName %>
+              </td>
+              <td class="text-end"><%= s.orderCount %></td>
+              <td class="text-end fw-bold text-success"><%= Number(s.revenue).toLocaleString('vi-VN') %> đ</td>
+              <td class="text-end text-muted small"><%= Number(s.averageOrderValue).toLocaleString('vi-VN') %> đ</td>
             </tr>
             <% }) %>
-            <% if (!topProducts.length) { %><tr><td colspan="3" class="text-center text-muted">Không có dữ liệu</td></tr><% } %>
+            <% if (!byStaff.length) { %>
+            <tr><td colspan="4" class="text-center text-muted py-3">Không có dữ liệu</td></tr>
+            <% } %>
           </tbody>
         </table>
       </div>
     </div>
+
+    <!-- Đối soát tiền mặt và ca làm việc -->
+    <div class="card-box">
+      <div class="card-box-header">
+        <h5 class="card-box-title">
+          <i class="bi bi-safe2 text-success"></i> Đối soát ca & Tiền mặt
+        </h5>
+        <span class="badge bg-light text-secondary border"><%= shiftsSummary.totalShifts %> ca đóng</span>
+      </div>
+      <div class="card-box-body pb-0">
+        <div class="row g-2 text-center mb-3">
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <div class="text-muted small" style="font-size:11px">Tiền đầu ca</div>
+              <div class="fw-bold"><%= Number(shiftsSummary.totalOpeningCash).toLocaleString('vi-VN') %> đ</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 border rounded bg-light">
+              <div class="text-muted small" style="font-size:11px">Tiền đếm thực tế</div>
+              <div class="fw-bold"><%= Number(shiftsSummary.totalCountedCash).toLocaleString('vi-VN') %> đ</div>
+            </div>
+          </div>
+          <div class="col-12 mt-2">
+            <div class="p-2 border rounded <%= shiftsSummary.totalCashDifference === 0 ? 'bg-success-subtle border-success' : (shiftsSummary.totalCashDifference > 0 ? 'bg-info-subtle border-info' : 'bg-danger-subtle border-danger') %>">
+              <div class="small fw-semibold">
+                Tổng lệch tiền mặt: 
+                <span class="fs-6 fw-bold">
+                  <%= shiftsSummary.totalCashDifference > 0 ? '+' : '' %><%= Number(shiftsSummary.totalCashDifference).toLocaleString('vi-VN') %> đ
+                </span>
+                <% if (shiftsSummary.totalCashDifference === 0) { %>
+                  <span class="badge bg-success ms-1">Khớp chuẩn 100%</span>
+                <% } else if (shiftsSummary.totalCashDifference < 0) { %>
+                  <span class="badge bg-danger ms-1">Thiếu tiền</span>
+                <% } else { %>
+                  <span class="badge bg-info ms-1">Thừa tiền</span>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
+<!-- SCRIPTS KHỞI TẠO CHART.JS -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const formatVnd = (val) => Number(val).toLocaleString('vi-VN') + ' đ';
+
+    // 1. TIMELINE CHART (Line + Bar combined)
+    const timelineData = <%- JSON.stringify(chartTimeline) %>;
+    const ctxTimeline = document.getElementById('timelineChart')?.getContext('2d');
+    if (ctxTimeline && timelineData.labels.length > 0) {
+      new Chart(ctxTimeline, {
+        data: {
+          labels: timelineData.labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Doanh thu (đ)',
+              data: timelineData.revenue,
+              backgroundColor: 'rgba(16, 185, 129, 0.75)',
+              borderColor: '#059669',
+              borderWidth: 1,
+              borderRadius: 6,
+              yAxisID: 'yRevenue',
+              order: 2,
+            },
+            {
+              type: 'line',
+              label: 'Số đơn hàng',
+              data: timelineData.orders,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.35,
+              fill: false,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#1d4ed8',
+              yAxisID: 'yOrders',
+              order: 1,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 14, font: { family: 'Plus Jakarta Sans', size: 12 } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  if (context.dataset.yAxisID === 'yRevenue') {
+                    return 'Doanh thu: ' + formatVnd(context.parsed.y);
+                  }
+                  return 'Số đơn: ' + context.parsed.y + ' đơn';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            yRevenue: {
+              type: 'linear',
+              position: 'left',
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) {
+                  if (val >= 1000000) return (val / 1000000) + ' tr';
+                  if (val >= 1000) return (val / 1000) + ' k';
+                  return val;
+                }
+              },
+              grid: { color: 'rgba(226, 232, 240, 0.6)' }
+            },
+            yOrders: {
+              type: 'linear',
+              position: 'right',
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. PAYMENT METHOD DOUGHNUT CHART
+    const paymentData = <%- JSON.stringify(byMethod) %>;
+    const ctxPayment = document.getElementById('paymentChart')?.getContext('2d');
+    if (ctxPayment && paymentData.length > 0) {
+      new Chart(ctxPayment, {
+        type: 'doughnut',
+        data: {
+          labels: paymentData.map(p => p.name),
+          datasets: [{
+            data: paymentData.map(p => p.revenue),
+            backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b'],
+            borderWidth: 2,
+            borderColor: '#ffffff',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.label + ': ' + formatVnd(ctx.parsed) + ' (' + paymentData[ctx.dataIndex].percent + '%)';
+                }
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    // 3. ORDER TYPE DOUGHNUT CHART
+    const orderTypeData = <%- JSON.stringify(byOrderType) %>;
+    const ctxOrderType = document.getElementById('orderTypeChart')?.getContext('2d');
+    if (ctxOrderType && orderTypeData.length > 0) {
+      new Chart(ctxOrderType, {
+        type: 'doughnut',
+        data: {
+          labels: orderTypeData.map(o => o.name),
+          datasets: [{
+            data: orderTypeData.map(o => o.orderCount),
+            backgroundColor: ['#0d9488', '#ea580c'],
+            borderWidth: 2,
+            borderColor: '#ffffff',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.label + ': ' + ctx.parsed + ' đơn (' + orderTypeData[ctx.dataIndex].percent + '% doanh thu)';
+                }
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    // 4. HOURLY DISTRIBUTION BAR CHART
+    const hourlyData = <%- JSON.stringify(chartHourly) %>;
+    const ctxHourly = document.getElementById('hourlyChart')?.getContext('2d');
+    if (ctxHourly) {
+      new Chart(ctxHourly, {
+        type: 'bar',
+        data: {
+          labels: hourlyData.labels,
+          datasets: [{
+            label: 'Doanh thu theo giờ',
+            data: hourlyData.revenue,
+            backgroundColor: 'rgba(245, 158, 11, 0.75)',
+            borderColor: '#d97706',
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return 'Doanh thu: ' + formatVnd(ctx.parsed.y) + ' (' + hourlyData.orders[ctx.dataIndex] + ' đơn)';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) {
+                  if (val >= 1000000) return (val / 1000000) + ' tr';
+                  if (val >= 1000) return (val / 1000) + ' k';
+                  return val;
+                }
+              },
+              grid: { color: 'rgba(226, 232, 240, 0.6)' }
+            }
+          }
+        }
+      });
+    }
+
+    // 5. CATEGORY REVENUE CHART (Horizontal Bar)
+    const categoryData = <%- JSON.stringify(byCategory) %>;
+    const ctxCat = document.getElementById('categoryChart')?.getContext('2d');
+    if (ctxCat) {
+      new Chart(ctxCat, {
+        type: 'bar',
+        data: {
+          labels: categoryData.map(c => c.category),
+          datasets: [{
+            axis: 'y',
+            label: 'Doanh thu',
+            data: categoryData.map(c => c.revenue),
+            backgroundColor: [
+              'rgba(6, 182, 212, 0.8)',
+              'rgba(59, 130, 246, 0.8)',
+              'rgba(16, 185, 129, 0.8)',
+              'rgba(245, 158, 11, 0.8)',
+              'rgba(139, 92, 246, 0.8)',
+              'rgba(244, 63, 94, 0.8)',
+            ],
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return 'Doanh thu: ' + formatVnd(ctx.parsed.x) + ' (' + categoryData[ctx.dataIndex].quantity + ' món)';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) {
+                  if (val >= 1000000) return (val / 1000000) + ' tr';
+                  if (val >= 1000) return (val / 1000) + ' k';
+                  return val;
+                }
+              },
+              grid: { color: 'rgba(226, 232, 240, 0.6)' }
+            },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    }
+  });
+</script>
 
 <%- include('partials/footer') %>

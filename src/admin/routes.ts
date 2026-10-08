@@ -63,20 +63,47 @@ async function audit(
   });
 }
 
-/** Start-of-day / end-of-day helpers for the report date inputs (local time). */
+/** Start-of-day / end-of-day helpers for the report date inputs (Vietnam time UTC+7). */
+function vnDateStr(d: Date = new Date()): string {
+  const vnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+  return vnTime.toISOString().slice(0, 10);
+}
+
 function dayRangeMs(fromDate: string, toDate: string): { fromMs: number; toMs: number } {
-  const fromMs = new Date(`${fromDate}T00:00:00`).getTime();
-  const toMs = new Date(`${toDate}T23:59:59.999`).getTime();
+  const fromMs = new Date(`${fromDate}T00:00:00+07:00`).getTime();
+  const toMs = new Date(`${toDate}T23:59:59.999+07:00`).getTime();
   return { fromMs, toMs };
 }
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return vnDateStr();
+}
+
+function yesterdayStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return vnDateStr(d);
+}
+
+function daysAgoStr(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return vnDateStr(d);
 }
 
 function monthStartStr(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-01`;
+  const d = new Date(Date.now() + 7 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function lastMonthRange(): { from: string; to: string } {
+  const d = new Date(Date.now() + 7 * 3600 * 1000);
+  const firstDayPrevMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
+  const lastDayPrevMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 0));
+  return {
+    from: firstDayPrevMonth.toISOString().slice(0, 10),
+    to: lastDayPrevMonth.toISOString().slice(0, 10),
+  };
 }
 
 export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: Config): void {
@@ -168,62 +195,304 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     const session = await requireManager(req, res, prisma, 'redirect');
     if (!session) return;
 
-    const fromDate = (req.query.from as string) || monthStartStr();
-    const toDate = (req.query.to as string) || todayStr();
+    const presetParam = req.query.preset as string | undefined;
+    let fromDate = (req.query.from as string) || '';
+    let toDate = (req.query.to as string) || '';
+
+    if (presetParam === 'today') {
+      fromDate = todayStr();
+      toDate = todayStr();
+    } else if (presetParam === 'yesterday') {
+      fromDate = yesterdayStr();
+      toDate = yesterdayStr();
+    } else if (presetParam === 'last7days') {
+      fromDate = daysAgoStr(6);
+      toDate = todayStr();
+    } else if (presetParam === 'thismonth') {
+      fromDate = monthStartStr();
+      toDate = todayStr();
+    } else if (presetParam === 'lastmonth') {
+      const lm = lastMonthRange();
+      fromDate = lm.from;
+      toDate = lm.to;
+    } else if (!fromDate || !toDate) {
+      fromDate = monthStartStr();
+      toDate = todayStr();
+    }
+
+    let activePreset = presetParam || '';
+    if (!activePreset) {
+      if (fromDate === todayStr() && toDate === todayStr()) activePreset = 'today';
+      else if (fromDate === yesterdayStr() && toDate === yesterdayStr()) activePreset = 'yesterday';
+      else if (fromDate === daysAgoStr(6) && toDate === todayStr()) activePreset = 'last7days';
+      else if (fromDate === monthStartStr() && toDate === todayStr()) activePreset = 'thismonth';
+      else {
+        const lm = lastMonthRange();
+        if (fromDate === lm.from && toDate === lm.to) activePreset = 'lastmonth';
+      }
+    }
+
     const { fromMs, toMs } = dayRangeMs(fromDate, toDate);
 
-    const range = {
-      status: 'PAID' as const,
-      createdAtMs: { gte: BigInt(fromMs), lte: BigInt(toMs) },
-    };
-
-    const byMethod = await prisma.order.groupBy({
-      by: ['paymentMethod'],
-      where: range,
-      _sum: { total: true },
-      _count: { _all: true },
+    // 1. Fetch all orders (PAID and CANCELLED)
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAtMs: { gte: BigInt(fromMs), lte: BigInt(toMs) },
+      },
+      include: {
+        items: {
+          include: {
+            product: { select: { category: true } },
+          },
+        },
+        device: { select: { name: true } },
+      },
+      orderBy: { createdAtMs: 'asc' },
     });
 
-    const totalRevenue = byMethod.reduce((sum, m) => sum + (m._sum.total ?? 0), 0);
-    const totalOrders = byMethod.reduce((sum, m) => sum + m._count._all, 0);
-
-    const topRaw = await prisma.orderItem.groupBy({
-      by: ['productName'],
-      where: { order: range },
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: 'desc' } },
-      take: 10,
+    // 2. Fetch closed shifts for cash reconciliation
+    const shifts = await prisma.shift.findMany({
+      where: {
+        openedAtMs: { gte: BigInt(fromMs), lte: BigInt(toMs) },
+        status: 'CLOSED',
+      },
+      select: {
+        syncId: true,
+        openedAtMs: true,
+        closedAtMs: true,
+        openingCash: true,
+        countedCash: true,
+        expectedCash: true,
+        cashDifference: true,
+        staffName: true,
+      },
+      orderBy: { openedAtMs: 'desc' },
+      take: 20,
     });
 
-    const topProducts = await Promise.all(
-      topRaw.map(async (t) => {
-        const rows = await prisma.orderItem.findMany({
-          where: { productName: t.productName, order: range },
-          select: { unitPrice: true, quantity: true },
-        });
-        return {
-          productName: t.productName,
-          quantity: t._sum.quantity ?? 0,
-          revenue: rows.reduce((s, r) => s + r.unitPrice * r.quantity, 0),
+    const paidOrders = orders.filter((o) => o.status === 'PAID');
+    const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED');
+
+    const totalOrders = paidOrders.length;
+    const totalCancelled = cancelledOrders.length;
+    const totalAllOrders = orders.length;
+    const cancellationRate = totalAllOrders > 0 ? Number(((totalCancelled / totalAllOrders) * 100).toFixed(1)) : 0;
+
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalGross = paidOrders.reduce((sum, o) => sum + o.subtotal, 0);
+    const totalDiscount = paidOrders.reduce((sum, o) => sum + o.discountAmount, 0);
+    const discountRate = totalGross > 0 ? Number(((totalDiscount / totalGross) * 100).toFixed(1)) : 0;
+    const averageOrderValue = totalOrders > 0 ? average(totalRevenue, totalOrders) : 0;
+
+    let totalItemsSold = 0;
+    for (const o of paidOrders) {
+      for (const it of o.items) {
+        totalItemsSold += it.quantity;
+      }
+    }
+    const averageItemsPerOrder = totalOrders > 0 ? Number((totalItemsSold / totalOrders).toFixed(1)) : 0;
+
+    // Payment methods breakdown
+    const methodMap = new Map<string, { count: number; revenue: number }>();
+    for (const o of paidOrders) {
+      const cur = methodMap.get(o.paymentMethod) || { count: 0, revenue: 0 };
+      cur.count += 1;
+      cur.revenue += o.total;
+      methodMap.set(o.paymentMethod, cur);
+    }
+    const byMethod = Array.from(methodMap.entries()).map(([method, data]) => ({
+      paymentMethod: method,
+      name: method === 'CASH' ? 'Tiền mặt' : method === 'TRANSFER' ? 'Chuyển khoản' : method === 'CARD' ? 'Thẻ' : method,
+      orderCount: data.count,
+      revenue: data.revenue,
+      percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
+    }));
+
+    // Order types breakdown
+    const typeMap = new Map<string, { count: number; revenue: number }>();
+    for (const o of paidOrders) {
+      const cur = typeMap.get(o.orderType) || { count: 0, revenue: 0 };
+      cur.count += 1;
+      cur.revenue += o.total;
+      typeMap.set(o.orderType, cur);
+    }
+    const byOrderType = Array.from(typeMap.entries()).map(([type, data]) => ({
+      orderType: type,
+      name: type === 'DINE_IN' ? 'Tại bàn' : type === 'TAKE_AWAY' ? 'Mang về' : type,
+      orderCount: data.count,
+      revenue: data.revenue,
+      percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
+    }));
+
+    // Hourly distribution (0h - 23h in Vietnam time UTC+7)
+    const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
+      hour: `${String(hour).padStart(2, '0')}:00`,
+      revenue: 0,
+      orders: 0,
+    }));
+    for (const o of paidOrders) {
+      const vnDate = new Date(Number(o.createdAtMs) + 7 * 3600 * 1000);
+      const h = vnDate.getUTCHours();
+      hourlyData[h].revenue += o.total;
+      hourlyData[h].orders += 1;
+    }
+
+    // Timeline Chart (by Day if range > 1 day, by Hour if range == 1 day)
+    const isSingleDay = fromDate === toDate;
+    const timelineLabels: string[] = [];
+    const timelineRevenue: number[] = [];
+    const timelineOrders: number[] = [];
+
+    if (isSingleDay) {
+      for (let h = 7; h <= 23; h += 1) {
+        timelineLabels.push(`${String(h).padStart(2, '0')}:00`);
+        timelineRevenue.push(hourlyData[h].revenue);
+        timelineOrders.push(hourlyData[h].orders);
+      }
+    } else {
+      const dayMap = new Map<string, { revenue: number; orders: number }>();
+      const cur = new Date(`${fromDate}T00:00:00+07:00`);
+      const end = new Date(`${toDate}T00:00:00+07:00`);
+      while (cur <= end) {
+        const dStr = vnDateStr(cur);
+        dayMap.set(dStr, { revenue: 0, orders: 0 });
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      for (const o of paidOrders) {
+        const vnDate = new Date(Number(o.createdAtMs) + 7 * 3600 * 1000);
+        const dStr = vnDate.toISOString().slice(0, 10);
+        const existing = dayMap.get(dStr);
+        if (existing) {
+          existing.revenue += o.total;
+          existing.orders += 1;
+        }
+      }
+
+      for (const [dStr, val] of dayMap.entries()) {
+        const parts = dStr.split('-');
+        timelineLabels.push(`${parts[2]}/${parts[1]}`);
+        timelineRevenue.push(val.revenue);
+        timelineOrders.push(val.orders);
+      }
+    }
+
+    // Categories breakdown
+    const catMap = new Map<string, { revenue: number; quantity: number }>();
+    for (const o of paidOrders) {
+      for (const it of o.items) {
+        const cat = it.product?.category?.trim() || 'Khác';
+        const cur = catMap.get(cat) || { revenue: 0, quantity: 0 };
+        cur.quantity += it.quantity;
+        cur.revenue += it.unitPrice * it.quantity;
+        catMap.set(cat, cur);
+      }
+    }
+    const byCategory = Array.from(catMap.entries())
+      .map(([category, data]) => ({
+        category,
+        quantity: data.quantity,
+        revenue: data.revenue,
+        percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Top Products
+    const prodMap = new Map<string, { quantity: number; revenue: number; category: string }>();
+    for (const o of paidOrders) {
+      for (const it of o.items) {
+        const cur = prodMap.get(it.productName) || {
+          quantity: 0,
+          revenue: 0,
+          category: it.product?.category?.trim() || 'Khác',
         };
-      }),
-    );
+        cur.quantity += it.quantity;
+        cur.revenue += it.unitPrice * it.quantity;
+        prodMap.set(it.productName, cur);
+      }
+    }
+    const topProducts = Array.from(prodMap.entries())
+      .map(([name, data]) => ({
+        productName: name,
+        category: data.category,
+        quantity: data.quantity,
+        revenue: data.revenue,
+        percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
+        averagePrice: data.quantity > 0 ? average(data.revenue, data.quantity) : 0,
+      }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 10);
+
+    // Staff Performance
+    const staffMap = new Map<string, { orderCount: number; revenue: number }>();
+    for (const o of paidOrders) {
+      const sName = o.staffName?.trim() || 'Thu ngân';
+      const cur = staffMap.get(sName) || { orderCount: 0, revenue: 0 };
+      cur.orderCount += 1;
+      cur.revenue += o.total;
+      staffMap.set(sName, cur);
+    }
+    const byStaff = Array.from(staffMap.entries())
+      .map(([name, data]) => ({
+        staffName: name,
+        orderCount: data.orderCount,
+        revenue: data.revenue,
+        averageOrderValue: data.orderCount > 0 ? average(data.revenue, data.orderCount) : 0,
+        percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Shifts Summary
+    const totalShifts = shifts.length;
+    const totalOpeningCash = shifts.reduce((s, sh) => s + sh.openingCash, 0);
+    const totalCountedCash = shifts.reduce((s, sh) => s + (sh.countedCash ?? 0), 0);
+    const totalExpectedCash = shifts.reduce((s, sh) => s + (sh.expectedCash ?? 0), 0);
+    const totalCashDifference = shifts.reduce((s, sh) => s + (sh.cashDifference ?? 0), 0);
 
     res.render('reports', {
       active: 'reports',
       session,
       fromDate,
       toDate,
+      activePreset,
       totalRevenue,
+      totalGross,
+      totalDiscount,
+      discountRate,
       totalOrders,
-      // Division goes through the shared Money rule (HALF_UP), same as the POS.
-      averageOrderValue: average(totalRevenue, totalOrders),
-      byMethod: byMethod.map((m) => ({
-        paymentMethod: m.paymentMethod,
-        orderCount: m._count._all,
-        revenue: m._sum.total ?? 0,
-      })),
+      totalCancelled,
+      cancellationRate,
+      totalItemsSold,
+      averageItemsPerOrder,
+      averageOrderValue,
+      byMethod,
+      byOrderType,
+      byCategory,
       topProducts,
+      byStaff,
+      shiftsSummary: {
+        totalShifts,
+        totalOpeningCash,
+        totalCountedCash,
+        totalExpectedCash,
+        totalCashDifference,
+      },
+      shifts: shifts.map((s) => ({
+        ...s,
+        openedAtMs: Number(s.openedAtMs),
+        closedAtMs: s.closedAtMs ? Number(s.closedAtMs) : null,
+      })),
+      isSingleDay,
+      chartTimeline: {
+        labels: timelineLabels,
+        revenue: timelineRevenue,
+        orders: timelineOrders,
+      },
+      chartHourly: {
+        labels: hourlyData.slice(7, 24).map((h) => h.hour),
+        revenue: hourlyData.slice(7, 24).map((h) => h.revenue),
+        orders: hourlyData.slice(7, 24).map((h) => h.orders),
+      },
     });
   });
 
