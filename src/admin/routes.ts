@@ -449,6 +449,168 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     const totalExpectedCash = shifts.reduce((s, sh) => s + (sh.expectedCash ?? 0), 0);
     const totalCashDifference = shifts.reduce((s, sh) => s + (sh.cashDifference ?? 0), 0);
 
+    // 1. Chart: Day of Week (Thứ 2 -> Chủ Nhật)
+    const dayOfWeekLabels = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+    // UTC+7 Day mapping: 1->0 (Mon), 2->1 (Tue), 3->2 (Wed), 4->3 (Thu), 5->4 (Fri), 6->5 (Sat), 0->6 (Sun)
+    const dowIndexMap = [6, 0, 1, 2, 3, 4, 5];
+    const dowRevenue = [0, 0, 0, 0, 0, 0, 0];
+    const dowOrders = [0, 0, 0, 0, 0, 0, 0];
+    for (const o of paidOrders) {
+      const vnDate = new Date(Number(o.createdAtMs) + 7 * 3600 * 1000);
+      const dow = vnDate.getUTCDay();
+      const idx = dowIndexMap[dow];
+      dowRevenue[idx] += o.total;
+      dowOrders[idx] += 1;
+    }
+    const chartDayOfWeek = {
+      labels: dayOfWeekLabels,
+      revenue: dowRevenue,
+      orders: dowOrders,
+    };
+
+    // 2. Chart: Ticket Size / Order Value Distribution
+    const ticketBuckets = [
+      { label: '< 30k', min: 0, max: 29999, count: 0, revenue: 0 },
+      { label: '30k - 60k', min: 30000, max: 60000, count: 0, revenue: 0 },
+      { label: '60k - 100k', min: 60001, max: 100000, count: 0, revenue: 0 },
+      { label: '100k - 200k', min: 100001, max: 200000, count: 0, revenue: 0 },
+      { label: '> 200k', min: 200001, max: Infinity, count: 0, revenue: 0 },
+    ];
+    for (const o of paidOrders) {
+      const val = o.total;
+      for (const b of ticketBuckets) {
+        if (val >= b.min && val <= b.max) {
+          b.count += 1;
+          b.revenue += val;
+          break;
+        }
+      }
+    }
+    const chartTicketSize = {
+      labels: ticketBuckets.map((b) => b.label),
+      counts: ticketBuckets.map((b) => b.count),
+      revenues: ticketBuckets.map((b) => b.revenue),
+      percents: ticketBuckets.map((b) =>
+        totalOrders > 0 ? Number(((b.count / totalOrders) * 100).toFixed(1)) : 0
+      ),
+    };
+
+    // 3. Chart: Topping Statistics & Attachment Rate
+    const masterToppings = await prisma.topping.findMany({
+      select: { name: true, price: true },
+    });
+    const toppingPriceMap = new Map<string, number>();
+    for (const t of masterToppings) {
+      toppingPriceMap.set(t.name.trim().toLowerCase(), t.price);
+    }
+
+    let itemsWithToppingCount = 0;
+    const toppingUsageMap = new Map<string, { count: number; estRevenue: number }>();
+    for (const o of paidOrders) {
+      for (const it of o.items) {
+        const match = it.productName.match(/^(.*?)\s*\(\+(.*?)\)$/);
+        if (match) {
+          itemsWithToppingCount += it.quantity;
+          const rawToppings = match[2].split(',').map((s) => s.trim()).filter(Boolean);
+          for (const tName of rawToppings) {
+            const cur = toppingUsageMap.get(tName) || { count: 0, estRevenue: 0 };
+            cur.count += it.quantity;
+            const unitP = toppingPriceMap.get(tName.toLowerCase()) || 0;
+            cur.estRevenue += unitP * it.quantity;
+            toppingUsageMap.set(tName, cur);
+          }
+        }
+      }
+    }
+    const topToppings = Array.from(toppingUsageMap.entries())
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        estRevenue: data.estRevenue,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+    const toppingAttachmentRate =
+      totalItemsSold > 0
+        ? Number(((itemsWithToppingCount / totalItemsSold) * 100).toFixed(1))
+        : 0;
+
+    const toppingStats = {
+      itemsWithToppingCount,
+      itemsWithoutToppingCount: Math.max(0, totalItemsSold - itemsWithToppingCount),
+      attachmentRate: toppingAttachmentRate,
+      topToppings,
+      totalToppingPortions: Array.from(toppingUsageMap.values()).reduce((sum, v) => sum + v.count, 0),
+    };
+    const chartTopping = {
+      labels: topToppings.map((t) => t.name),
+      counts: topToppings.map((t) => t.count),
+      revenues: topToppings.map((t) => t.estRevenue),
+    };
+
+    // 4. Chart: Discount Breakdown & Promotion Impact
+    const discountGroups = {
+      NONE: { label: 'Nguyên giá', count: 0, discount: 0, revenue: 0 },
+      PERCENT: { label: 'Giảm theo %', count: 0, discount: 0, revenue: 0 },
+      AMOUNT: { label: 'Giảm số tiền', count: 0, discount: 0, revenue: 0 },
+      CODE: { label: 'Mã Voucher', count: 0, discount: 0, revenue: 0 },
+    };
+    for (const o of paidOrders) {
+      const type = o.discountType;
+      if (!type || type === 'NONE' || o.discountAmount === 0) {
+        discountGroups.NONE.count += 1;
+        discountGroups.NONE.revenue += o.total;
+      } else if (type === 'PERCENT') {
+        discountGroups.PERCENT.count += 1;
+        discountGroups.PERCENT.discount += o.discountAmount;
+        discountGroups.PERCENT.revenue += o.total;
+      } else if (type === 'AMOUNT') {
+        discountGroups.AMOUNT.count += 1;
+        discountGroups.AMOUNT.discount += o.discountAmount;
+        discountGroups.AMOUNT.revenue += o.total;
+      } else if (type === 'CODE') {
+        discountGroups.CODE.count += 1;
+        discountGroups.CODE.discount += o.discountAmount;
+        discountGroups.CODE.revenue += o.total;
+      } else {
+        discountGroups.NONE.count += 1;
+        discountGroups.NONE.revenue += o.total;
+      }
+    }
+    const discountedOrdersCount =
+      discountGroups.PERCENT.count + discountGroups.AMOUNT.count + discountGroups.CODE.count;
+    const discountedOrdersRate =
+      totalOrders > 0 ? Number(((discountedOrdersCount / totalOrders) * 100).toFixed(1)) : 0;
+
+    const discountStats = {
+      discountedOrdersCount,
+      discountedOrdersRate,
+      fullPriceOrdersCount: discountGroups.NONE.count,
+      totalDiscountAmount: totalDiscount,
+    };
+    const chartDiscount = {
+      labels: ['Nguyên giá', 'Giảm theo %', 'Giảm số tiền', 'Mã Voucher'],
+      counts: [
+        discountGroups.NONE.count,
+        discountGroups.PERCENT.count,
+        discountGroups.AMOUNT.count,
+        discountGroups.CODE.count,
+      ],
+      discounts: [
+        0,
+        discountGroups.PERCENT.discount,
+        discountGroups.AMOUNT.discount,
+        discountGroups.CODE.discount,
+      ],
+      revenues: [
+        discountGroups.NONE.revenue,
+        discountGroups.PERCENT.revenue,
+        discountGroups.AMOUNT.revenue,
+        discountGroups.CODE.revenue,
+      ],
+    };
+
     res.render('reports', {
       active: 'reports',
       session,
@@ -493,6 +655,12 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         revenue: hourlyData.slice(7, 24).map((h) => h.revenue),
         orders: hourlyData.slice(7, 24).map((h) => h.orders),
       },
+      chartDayOfWeek,
+      chartTicketSize,
+      toppingStats,
+      chartTopping,
+      discountStats,
+      chartDiscount,
     });
   });
 

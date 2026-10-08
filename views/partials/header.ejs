@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POS Quán Nước — Quản trị</title>
+  <title>Chè Thông Dong — Quản trị POS</title>
+  <link rel="icon" type="image/png" href="/logo_icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -34,12 +35,22 @@
       box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
     }
     .sidebar .brand {
-      padding: 20px;
+      padding: 18px 20px;
       color: #ffffff;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+    .sidebar .brand-logo-img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #ffffff;
+      padding: 2px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+      flex-shrink: 0;
     }
     .sidebar .brand-icon {
       width: 36px;
@@ -276,9 +287,9 @@
 <body>
   <div class="sidebar d-flex flex-column">
     <div class="brand">
-      <div class="brand-icon"><i class="bi bi-cup-hot-fill"></i></div>
+      <img src="/logo_icon.png" alt="Chè Thông Dong" class="brand-logo-img">
       <div class="brand-text">
-        POS Quán Nước
+        Chè Thông Dong
         <small><%= typeof session !== 'undefined' && session ? ('Quản trị · ' + session.name) : 'Quản trị' %></small>
       </div>
     </div>
