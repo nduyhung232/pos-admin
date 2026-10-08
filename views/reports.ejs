@@ -342,8 +342,9 @@
     <div class="card-box h-100">
       <div class="card-box-header">
         <h5 class="card-box-title">
-          <i class="bi bi-tags-fill text-info"></i> Doanh thu theo danh mục món
+          <i class="bi bi-tags-fill text-info"></i> Doanh thu theo Nhóm / Danh mục (Category)
         </h5>
+        <span class="badge bg-light text-secondary border">Tổng hợp theo nhóm món</span>
       </div>
       <div class="card-box-body">
         <div style="height: 280px; position: relative;">
@@ -722,7 +723,7 @@
             tooltip: {
               callbacks: {
                 label: function(ctx) {
-                  return 'Doanh thu: ' + formatVnd(ctx.parsed.x) + ' (' + categoryData[ctx.dataIndex].quantity + ' món)';
+                  return 'Doanh thu nhóm ' + ctx.label + ': ' + formatVnd(ctx.parsed.x) + ' (' + categoryData[ctx.dataIndex].quantity + ' món đã bán)';
                 }
               }
             }
