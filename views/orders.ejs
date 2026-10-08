@@ -1,34 +1,208 @@
 <%- include('partials/header') %>
 
-<h4 class="mb-3"><i class="bi bi-receipt"></i> Lịch sử đơn <span class="text-muted fs-6">(<%= total %> đơn)</span></h4>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h4 class="fw-bold mb-1" style="color:#0f172a">
+      <i class="bi bi-receipt-cutoff text-primary"></i> Lịch sử đơn hàng
+    </h4>
+    <p class="text-muted small mb-0">
+      Tổng cộng: <strong class="text-dark"><%= total %> đơn</strong> trong khoảng thời gian đã chọn
+    </p>
+  </div>
 
-<form class="row g-2 mb-4" style="max-width:520px">
-  <div class="col"><input type="date" name="from" class="form-control" value="<%= fromDate %>"></div>
-  <div class="col"><input type="date" name="to" class="form-control" value="<%= toDate %>"></div>
-  <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-search"></i> Lọc</button></div>
-</form>
+  <!-- Quick filter pills -->
+  <div class="d-flex flex-wrap gap-2">
+    <a href="/orders?preset=today" class="filter-pill <%= activePreset === 'today' ? 'active' : '' %>">
+      <i class="bi bi-calendar-event"></i> Hôm nay
+    </a>
+    <a href="/orders?preset=yesterday" class="filter-pill <%= activePreset === 'yesterday' ? 'active' : '' %>">
+      Hôm qua
+    </a>
+    <a href="/orders?preset=last7days" class="filter-pill <%= activePreset === 'last7days' ? 'active' : '' %>">
+      7 ngày qua
+    </a>
+    <a href="/orders?preset=thismonth" class="filter-pill <%= activePreset === 'thismonth' ? 'active' : '' %>">
+      Tháng này
+    </a>
+    <a href="/orders?preset=lastmonth" class="filter-pill <%= activePreset === 'lastmonth' ? 'active' : '' %>">
+      Tháng trước
+    </a>
+  </div>
+</div>
 
-<div class="card">
-  <div class="card-body p-0 table-responsive">
-    <table class="table table-sm mb-0 align-middle">
-      <thead class="table-light">
-        <tr><th>Thời gian</th><th>Máy</th><th>NV</th><th>Loại</th><th>TT</th><th class="text-end">Giảm</th><th class="text-end">Tổng</th><th>Trạng thái</th><th>Món</th></tr>
+<!-- Custom date filter -->
+<div class="card-table-wrapper p-3 mb-4" style="background:#ffffff">
+  <form method="GET" action="/orders" class="row g-2 align-items-center">
+    <div class="col-auto text-muted small fw-semibold">
+      <i class="bi bi-funnel"></i> Khoảng thời gian:
+    </div>
+    <div class="col-sm-3 col-6">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-light text-muted">Từ</span>
+        <input type="date" name="from" class="form-control" value="<%= fromDate %>" required>
+      </div>
+    </div>
+    <div class="col-sm-3 col-6">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-light text-muted">Đến</span>
+        <input type="date" name="to" class="form-control" value="<%= toDate %>" required>
+      </div>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-sm btn-primary px-3 fw-semibold">
+        <i class="bi bi-search"></i> Lọc đơn
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- SUMMARY METRIC BOXES -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="p-3 bg-white rounded-3 border shadow-sm">
+      <div class="text-muted small text-uppercase fw-semibold" style="font-size:11px">Doanh thu thu được</div>
+      <div class="fs-5 fw-bold text-success mt-1">
+        <%= Number(summary.totalRevenue).toLocaleString('vi-VN') %> đ
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="p-3 bg-white rounded-3 border shadow-sm">
+      <div class="text-muted small text-uppercase fw-semibold" style="font-size:11px">Đơn thành công</div>
+      <div class="fs-5 fw-bold text-primary mt-1">
+        <%= summary.paidCount %> <small class="fs-6 fw-normal text-muted">/ <%= total %> đơn</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="p-3 bg-white rounded-3 border shadow-sm">
+      <div class="text-muted small text-uppercase fw-semibold" style="font-size:11px">Hình thức phục vụ</div>
+      <div class="fs-6 fw-bold text-dark mt-1">
+        <span class="text-teal"><%= summary.dineInCount %> Tại bàn</span> · 
+        <span class="text-orange"><%= summary.takeAwayCount %> Mang về</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="p-3 bg-white rounded-3 border shadow-sm">
+      <div class="text-muted small text-uppercase fw-semibold" style="font-size:11px">Giảm giá & Đơn huỷ</div>
+      <div class="fs-6 fw-bold text-dark mt-1">
+        <span class="text-warning-emphasis"><%= Number(summary.totalDiscount).toLocaleString('vi-VN') %> đ giảm</span>
+        <% if (summary.cancelledCount > 0) { %>
+          · <span class="text-danger"><%= summary.cancelledCount %> huỷ</span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ORDERS TABLE -->
+<div class="card-table-wrapper">
+  <div class="table-responsive">
+    <table class="table-modern">
+      <thead>
+        <tr>
+          <th style="min-width: 110px;">Thời gian</th>
+          <th style="min-width: 140px;">Máy POS</th>
+          <th style="min-width: 110px;">Thu ngân</th>
+          <th style="min-width: 110px;">Loại đơn</th>
+          <th style="min-width: 120px;">Thanh toán</th>
+          <th class="text-end" style="min-width: 100px;">Giảm giá</th>
+          <th class="text-end" style="min-width: 120px;">Tổng tiền</th>
+          <th class="text-center" style="min-width: 110px;">Trạng thái</th>
+          <th style="min-width: 280px;">Món đã chọn</th>
+        </tr>
       </thead>
       <tbody>
         <% orders.forEach(function(o){ %>
         <tr>
-          <td><%= new Date(o.createdAtMs).toLocaleString('vi-VN') %></td>
-          <td><%= o.deviceName %></td>
-          <td><%= o.staffName || '—' %></td>
-          <td><%= o.orderType === 'DINE_IN' ? 'Tại chỗ' : 'Mang về' %></td>
-          <td><%= o.paymentMethod %></td>
-          <td class="text-end"><%= Number(o.discountAmount).toLocaleString('vi-VN') %></td>
-          <td class="text-end fw-semibold"><%= Number(o.total).toLocaleString('vi-VN') %> đ</td>
-          <td><span class="badge <%= o.status === 'PAID' ? 'bg-success' : 'bg-danger' %>"><%= o.status %></span></td>
-          <td class="small text-muted"><%= o.items.map(function(i){ return i.productName + ' x' + i.quantity; }).join(', ') %></td>
+          <!-- Thời gian -->
+          <td>
+            <div class="d-flex flex-column">
+              <span class="fw-bold text-dark" style="font-size:13.5px;"><%= o.timeFormatted %></span>
+              <span class="text-muted" style="font-size:11.5px;"><%= o.dateFormatted %></span>
+            </div>
+          </td>
+
+          <!-- Máy POS -->
+          <td>
+            <span class="badge bg-light text-secondary border text-nowrap">
+              <i class="bi bi-tablet me-1"></i><%= o.deviceName %>
+            </span>
+          </td>
+
+          <!-- Thu ngân -->
+          <td>
+            <span class="fw-semibold text-dark text-nowrap">
+              <i class="bi bi-person-circle text-primary me-1"></i><%= o.staffName || '—' %>
+            </span>
+          </td>
+
+          <!-- Loại đơn -->
+          <td>
+            <span class="badge-order-type <%= o.orderType === 'DINE_IN' ? 'badge-dinein' : 'badge-takeaway' %>">
+              <i class="bi <%= o.orderType === 'DINE_IN' ? 'bi-shop' : 'bi-bag' %>"></i>
+              <%= o.orderType === 'DINE_IN' ? 'Tại bàn' : 'Mang về' %>
+            </span>
+          </td>
+
+          <!-- Thanh toán -->
+          <td>
+            <span class="badge-pay <%= o.paymentMethod === 'CASH' ? 'badge-pay-cash' : (o.paymentMethod === 'TRANSFER' ? 'badge-pay-transfer' : 'badge-pay-card') %>">
+              <i class="bi <%= o.paymentMethod === 'CASH' ? 'bi-cash' : (o.paymentMethod === 'TRANSFER' ? 'bi-qr-code' : 'bi-credit-card') %>"></i>
+              <%= o.paymentMethod === 'CASH' ? 'Tiền mặt' : (o.paymentMethod === 'TRANSFER' ? 'Chuyển khoản' : 'Thẻ') %>
+            </span>
+          </td>
+
+          <!-- Giảm giá -->
+          <td class="text-end">
+            <% if (o.discountAmount > 0) { %>
+              <span class="badge bg-warning-subtle text-warning-emphasis fw-bold text-nowrap">
+                -<%= Number(o.discountAmount).toLocaleString('vi-VN') %> đ
+              </span>
+            <% } else { %>
+              <span class="text-muted">—</span>
+            <% } %>
+          </td>
+
+          <!-- Tổng tiền -->
+          <td class="text-end">
+            <span class="fw-bold text-dark text-nowrap" style="font-size: 14.5px;">
+              <%= Number(o.total).toLocaleString('vi-VN') %> <small class="text-muted fw-normal" style="font-size:11px">đ</small>
+            </span>
+          </td>
+
+          <!-- Trạng thái -->
+          <td class="text-center">
+            <span class="status-pill <%= o.status === 'PAID' ? 'status-paid' : 'status-cancelled' %>">
+              <span class="dot"></span>
+              <%= o.status === 'PAID' ? 'Đã thu' : 'Đã huỷ' %>
+            </span>
+          </td>
+
+          <!-- Danh sách món -->
+          <td>
+            <div class="d-flex flex-wrap align-items-center">
+              <% o.items.forEach(function(i){ %>
+                <span class="item-chip">
+                  <%= i.productName %><b class="item-qty">x<%= i.quantity %></b>
+                </span>
+              <% }) %>
+              <% if (!o.items.length) { %>
+                <span class="text-muted small">—</span>
+              <% } %>
+            </div>
+          </td>
         </tr>
         <% }) %>
-        <% if (!orders.length) { %><tr><td colspan="9" class="text-center text-muted">Không có đơn trong khoảng này</td></tr><% } %>
+        <% if (!orders.length) { %>
+        <tr>
+          <td colspan="9" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
+            Không có đơn hàng nào trong khoảng thời gian đã chọn
+          </td>
+        </tr>
+        <% } %>
       </tbody>
     </table>
   </div>

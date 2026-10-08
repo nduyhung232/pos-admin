@@ -4,45 +4,302 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>POS Quán Nước — Quản trị</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    .sidebar { min-height: 100vh; background: #1f2d3d; position: fixed; width: 230px; z-index: 1000; }
-    .sidebar .brand { padding: 16px 20px; color: #fff; }
-    .sidebar .brand small { color: #93a3b5; display: block; font-weight: normal; }
-    .sidebar a.nav-link { color: #d5dde5; padding: 11px 20px; display: block; text-decoration: none; }
-    .sidebar a.nav-link:hover, .sidebar a.nav-link.active { background: #2c3e50; color: #fff; }
-    .sidebar .signout { color: #f1948a; }
-    .main-content { margin-left: 230px; padding: 24px; min-height: 100vh; background: #f5f7fa; }
-    .stat-card { border-radius: 10px; padding: 18px; color: #fff; margin-bottom: 12px; }
-    @media (max-width: 767px) {
+    :root {
+      --bg-body: #f8fafc;
+      --sidebar-w: 240px;
+      --color-primary: #2563eb;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-body);
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+
+    /* ---- SIDEBAR ---- */
+    .sidebar {
+      min-height: 100vh;
+      background: #0f172a;
+      position: fixed;
+      width: var(--sidebar-w);
+      z-index: 1000;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    }
+    .sidebar .brand {
+      padding: 20px;
+      color: #ffffff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sidebar .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+    .sidebar .brand-text {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .sidebar .brand-text small {
+      color: #94a3b8;
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 3px;
+    }
+    .sidebar .nav-list {
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .sidebar a.nav-link {
+      color: #cbd5e1;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 13.5px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .sidebar a.nav-link i {
+      font-size: 16px;
+      opacity: 0.8;
+      transition: transform 0.15s ease;
+    }
+    .sidebar a.nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      transform: translateX(2px);
+    }
+    .sidebar a.nav-link:hover i {
+      opacity: 1;
+    }
+    .sidebar a.nav-link.active {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+    .sidebar a.nav-link.active i {
+      opacity: 1;
+    }
+    .sidebar .signout {
+      color: #f87171 !important;
+      background: rgba(239, 68, 68, 0.08);
+      margin: 12px 10px 16px;
+      border: 1px solid rgba(239, 68, 68, 0.15);
+    }
+    .sidebar .signout:hover {
+      background: rgba(239, 68, 68, 0.2) !important;
+      color: #ffffff !important;
+    }
+
+    /* ---- MAIN CONTENT ---- */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      padding: 28px 32px;
+      min-height: 100vh;
+      background: var(--bg-body);
+    }
+
+    /* ---- MODERN CARD & TABLE DESIGN SYSTEM ---- */
+    .card-table-wrapper {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .card-table-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #f1f5f9;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .table-modern {
+      margin-bottom: 0;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .table-modern thead th {
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 13px 18px;
+      border-bottom: 1px solid #e2e8f0;
+      border-top: none;
+      white-space: nowrap;
+    }
+    .table-modern tbody tr {
+      transition: background-color 0.15s ease;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .table-modern tbody tr:last-child {
+      border-bottom: none;
+    }
+    .table-modern tbody tr:hover {
+      background-color: #f8fafc;
+    }
+    .table-modern tbody td {
+      padding: 14px 18px;
+      vertical-align: middle;
+      font-size: 13.5px;
+      border-top: none;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* ---- BADGES & CHIPS ---- */
+    .badge-pay {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-pay-cash { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-pay-transfer { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-pay-card { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+
+    .badge-order-type {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-dinein { background: #ccfbf1; color: #0f766e; border: 1px solid #99f6e4; }
+    .badge-takeaway { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-paid { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .status-paid .dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+    .status-cancelled { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    .status-cancelled .dot { width: 6px; height: 6px; border-radius: 50%; background: #f43f5e; }
+
+    .item-chip {
+      display: inline-flex;
+      align-items: center;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 12px;
+      margin: 2px 2px 2px 0;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .item-chip .item-qty {
+      color: #2563eb;
+      font-weight: 700;
+      margin-left: 4px;
+    }
+
+    .filter-pill {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+      background: #f1f5f9;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .filter-pill:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+      transform: translateY(-1px);
+    }
+    .filter-pill.active {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+    }
+
+    @media (max-width: 991px) {
       .sidebar { position: static; width: 100%; min-height: auto; }
-      .main-content { margin-left: 0; padding: 14px; }
+      .main-content { margin-left: 0; padding: 18px; }
     }
   </style>
 </head>
 <body>
   <div class="sidebar d-flex flex-column">
-    <div class="brand fw-bold fs-6">
-      <i class="bi bi-cup-hot"></i> POS Quán Nước
-      <small><%= typeof session !== 'undefined' && session ? ('Quản trị · ' + session.name) : 'Quản trị' %></small>
+    <div class="brand">
+      <div class="brand-icon"><i class="bi bi-cup-hot-fill"></i></div>
+      <div class="brand-text">
+        POS Quán Nước
+        <small><%= typeof session !== 'undefined' && session ? ('Quản trị · ' + session.name) : 'Quản trị' %></small>
+      </div>
     </div>
-    <% const nav = [
-      ['reports', 'bi-bar-chart', 'Báo cáo doanh thu'],
-      ['orders', 'bi-receipt', 'Lịch sử đơn'],
-      ['shifts', 'bi-clock-history', 'Lịch sử ca'],
-      ['products', 'bi-box', 'Quản lý món'],
-      ['toppings', 'bi-egg-fried', 'Quản lý Topping'],
-      ['campaigns', 'bi-ticket-perforated', 'Mã giảm giá'],
-      ['staff', 'bi-people', 'Nhân viên'],
-      ['devices', 'bi-tablet', 'Máy POS'],
-      ['audit', 'bi-shield-check', 'Lịch sử thao tác']
-    ]; %>
-    <% nav.forEach(function(n){ %>
-      <a href="/<%= n[0] %>" class="nav-link <%= (typeof active !== 'undefined' && active === n[0]) ? 'active' : '' %>">
-        <i class="bi <%= n[1] %>"></i> <%= n[2] %>
-      </a>
-    <% }) %>
-    <a href="/logout" class="nav-link signout mt-auto"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
+    <div class="nav-list flex-grow-1">
+      <% const nav = [
+        ['reports', 'bi-bar-chart-fill', 'Báo cáo doanh thu'],
+        ['orders', 'bi-receipt-cutoff', 'Lịch sử đơn'],
+        ['shifts', 'bi-clock-history', 'Lịch sử ca'],
+        ['products', 'bi-box-seam-fill', 'Quản lý món'],
+        ['toppings', 'bi-egg-fried', 'Quản lý Topping'],
+        ['campaigns', 'bi-ticket-perforated-fill', 'Mã giảm giá'],
+        ['staff', 'bi-people-fill', 'Nhân viên'],
+        ['devices', 'bi-tablet-fill', 'Máy POS'],
+        ['audit', 'bi-shield-check', 'Lịch sử thao tác']
+      ]; %>
+      <% nav.forEach(function(n){ %>
+        <a href="/<%= n[0] %>" class="nav-link <%= (typeof active !== 'undefined' && active === n[0]) ? 'active' : '' %>">
+          <i class="bi <%= n[1] %>"></i> <span><%= n[2] %></span>
+        </a>
+      <% }) %>
+    </div>
+    <a href="/logout" class="nav-link signout"><i class="bi bi-box-arrow-right"></i> <span>Đăng xuất</span></a>
   </div>
   <div class="main-content">

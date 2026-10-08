@@ -1033,8 +1033,43 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     const session = await requireManager(req, res, prisma, 'redirect');
     if (!session) return;
 
-    const fromDate = (req.query.from as string) || monthStartStr();
-    const toDate = (req.query.to as string) || todayStr();
+    const presetParam = req.query.preset as string | undefined;
+    let fromDate = (req.query.from as string) || '';
+    let toDate = (req.query.to as string) || '';
+
+    if (presetParam === 'today') {
+      fromDate = todayStr();
+      toDate = todayStr();
+    } else if (presetParam === 'yesterday') {
+      fromDate = yesterdayStr();
+      toDate = yesterdayStr();
+    } else if (presetParam === 'last7days') {
+      fromDate = daysAgoStr(6);
+      toDate = todayStr();
+    } else if (presetParam === 'thismonth') {
+      fromDate = monthStartStr();
+      toDate = todayStr();
+    } else if (presetParam === 'lastmonth') {
+      const lm = lastMonthRange();
+      fromDate = lm.from;
+      toDate = lm.to;
+    } else if (!fromDate || !toDate) {
+      fromDate = monthStartStr();
+      toDate = todayStr();
+    }
+
+    let activePreset = presetParam || '';
+    if (!activePreset) {
+      if (fromDate === todayStr() && toDate === todayStr()) activePreset = 'today';
+      else if (fromDate === yesterdayStr() && toDate === yesterdayStr()) activePreset = 'yesterday';
+      else if (fromDate === daysAgoStr(6) && toDate === todayStr()) activePreset = 'last7days';
+      else if (fromDate === monthStartStr() && toDate === todayStr()) activePreset = 'thismonth';
+      else {
+        const lm = lastMonthRange();
+        if (fromDate === lm.from && toDate === lm.to) activePreset = 'lastmonth';
+      }
+    }
+
     const { fromMs, toMs } = dayRangeMs(fromDate, toDate);
 
     const where = {
@@ -1045,7 +1080,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       prisma.order.findMany({
         where,
         orderBy: { createdAtMs: 'desc' },
-        take: 200,
+        take: 300,
         select: {
           syncId: true,
           subtotal: true,
@@ -1065,17 +1100,40 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       prisma.order.count({ where }),
     ]);
 
+    const paidOrders = orders.filter((o) => o.status === 'PAID');
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalDiscount = paidOrders.reduce((sum, o) => sum + o.discountAmount, 0);
+    const dineInCount = paidOrders.filter((o) => o.orderType === 'DINE_IN').length;
+    const takeAwayCount = paidOrders.filter((o) => o.orderType === 'TAKE_AWAY').length;
+    const cancelledCount = orders.filter((o) => o.status === 'CANCELLED').length;
+
     res.render('orders', {
       active: 'orders',
       session,
       fromDate,
       toDate,
+      activePreset,
       total,
-      orders: orders.map((o) => ({
-        ...o,
-        createdAtMs: Number(o.createdAtMs),
-        deviceName: o.device.name,
-      })),
+      summary: {
+        totalRevenue,
+        paidCount: paidOrders.length,
+        cancelledCount,
+        dineInCount,
+        takeAwayCount,
+        totalDiscount,
+      },
+      orders: orders.map((o) => {
+        const d = new Date(Number(o.createdAtMs));
+        const timePart = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const datePart = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return {
+          ...o,
+          createdAtMs: Number(o.createdAtMs),
+          timeFormatted: timePart,
+          dateFormatted: datePart,
+          deviceName: o.device.name,
+        };
+      }),
     });
   });
 

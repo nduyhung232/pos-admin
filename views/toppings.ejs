@@ -36,19 +36,23 @@
   </div>
 </div>
 
-<div class="card" data-batch-form data-endpoint="/toppings">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <span class="fw-bold">Danh sách Topping</span>
-    <button type="button" class="btn btn-primary btn-sm" data-batch-save>
-      <i class="bi bi-save"></i> Lưu thay đổi
+<div class="card-table-wrapper mb-4" data-batch-form data-endpoint="/toppings">
+  <div class="card-table-header">
+    <span class="fw-bold fs-6"><i class="bi bi-egg-fried me-2 text-warning"></i>Danh sách Topping</span>
+    <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold" data-batch-save>
+      <i class="bi bi-save me-1"></i> Lưu thay đổi
     </button>
   </div>
-  <div class="card-body">
-    <div data-batch-notice></div>
+  <div class="p-0">
+    <div data-batch-notice class="px-3 pt-3"></div>
     <div class="table-responsive">
-      <table class="table table-sm mb-0 align-middle">
-        <thead class="table-light">
-          <tr><th>Tên topping</th><th class="text-end">Giá</th><th class="text-center">Đang dùng</th></tr>
+      <table class="table-modern align-middle">
+        <thead>
+          <tr>
+            <th style="min-width: 250px;">Tên topping</th>
+            <th class="text-end" style="min-width: 160px;">Giá bán (VND)</th>
+            <th class="text-center" style="min-width: 120px;">Đang dùng</th>
+          </tr>
         </thead>
         <tbody>
           <% toppings.forEach(function(t){ %>
