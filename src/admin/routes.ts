@@ -1326,18 +1326,39 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         status: true,
         staffName: true,
         device: { select: { name: true } },
+        orders: {
+          where: { status: 'PAID' },
+          select: { total: true, paymentMethod: true },
+        },
       },
     });
 
     res.render('shifts', {
       active: 'shifts',
       session,
-      shifts: shifts.map((s) => ({
-        ...s,
-        openedAtMs: Number(s.openedAtMs),
-        closedAtMs: s.closedAtMs === null ? null : Number(s.closedAtMs),
-        deviceName: s.device.name,
-      })),
+      shifts: shifts.map((s) => {
+        let cashSales = 0;
+        let transferSales = 0;
+        let cardSales = 0;
+        let totalSales = 0;
+        for (const o of s.orders) {
+          totalSales += o.total;
+          if (o.paymentMethod === 'CASH') cashSales += o.total;
+          else if (o.paymentMethod === 'TRANSFER') transferSales += o.total;
+          else if (o.paymentMethod === 'CARD') cardSales += o.total;
+        }
+        return {
+          ...s,
+          openedAtMs: Number(s.openedAtMs),
+          closedAtMs: s.closedAtMs === null ? null : Number(s.closedAtMs),
+          deviceName: s.device.name,
+          orderCount: s.orders.length,
+          totalSales,
+          cashSales,
+          transferSales,
+          cardSales,
+        };
+      }),
     });
   });
 
