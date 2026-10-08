@@ -9,6 +9,8 @@
  * cookie, self-contained SQLite. The financial logic and the Android sync
  * contract are preserved from pos-admin.
  */
+// Enforce Vietnam timezone (UTC+07:00) across all Date and time formatters
+process.env.TZ = 'Asia/Ho_Chi_Minh';
 
 import express from 'express';
 import session from 'express-session';
