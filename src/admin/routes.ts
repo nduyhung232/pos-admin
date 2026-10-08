@@ -359,6 +359,9 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       });
     }
 
+    res.json({ ok: true, updated: changes.length });
+  });
+
   app.post('/products/:syncId/toppings', async (req: Request, res: Response) => {
     const session = await requireManager(req, res, prisma, 'json');
     if (!session) return;
