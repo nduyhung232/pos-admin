@@ -68,6 +68,24 @@ model Product {
   updatedAtMs BigInt
 
   orderItems OrderItem[]
+  toppings   Topping[]
+
+  @@index([active])
+  @@index([updatedAtMs])
+}
+
+/// Topping item that can accompany products. Server-owned.
+model Topping {
+  id          Int       @id @default(autoincrement())
+  syncId      String    @unique
+  name        String
+  /// Integer VND.
+  price       Int
+  active      Boolean   @default(true)
+  createdAtMs BigInt
+  updatedAtMs BigInt
+
+  products    Product[]
 
   @@index([active])
   @@index([updatedAtMs])

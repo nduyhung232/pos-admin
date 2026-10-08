@@ -301,13 +301,26 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
 
     const nowMs = Date.now();
 
-    const [products, staff, codes] = await Promise.all([
+    const [products, toppings, staff, codes] = await Promise.all([
       prisma.product.findMany({
         select: {
           syncId: true,
           name: true,
           price: true,
           category: true,
+          active: true,
+          updatedAtMs: true,
+          toppings: {
+            where: { active: true },
+            select: { syncId: true },
+          },
+        },
+      }),
+      prisma.topping.findMany({
+        select: {
+          syncId: true,
+          name: true,
+          price: true,
           active: true,
           updatedAtMs: true,
         },
@@ -349,6 +362,14 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
         category: p.category,
         active: p.active,
         updatedAtMs: Number(p.updatedAtMs),
+        toppingSyncIds: p.toppings.map((t) => t.syncId),
+      })),
+      toppings: toppings.map((t) => ({
+        syncId: t.syncId,
+        name: t.name,
+        price: t.price,
+        active: t.active,
+        updatedAtMs: Number(t.updatedAtMs),
       })),
       staff: staff.map((s) => ({
         syncId: s.syncId,

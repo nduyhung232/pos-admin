@@ -1,0 +1,80 @@
+<%- include('partials/header') %>
+
+<h4 class="mb-3"><i class="bi bi-egg-fried"></i> Quản lý Topping</h4>
+
+<% if (notice) { %>
+<div class="alert alert-success alert-dismissible py-2">
+  <i class="bi bi-check-circle"></i>
+  <% if (notice === 'created') { %>Đã thêm topping.
+  <% } else { %>Thao tác thành công.<% } %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<% if (error) { %>
+<div class="alert alert-warning alert-dismissible py-2">
+  <i class="bi bi-exclamation-triangle"></i>
+  <% if (error === 'not_found') { %>Không tìm thấy topping.
+  <% } else { %>Dữ liệu không hợp lệ (<%= error %>).<% } %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<div class="card mb-4">
+  <div class="card-header fw-bold">Thêm Topping mới</div>
+  <div class="card-body">
+    <form method="post" action="/toppings" class="row g-2">
+      <div class="col-md-6"><input name="name" class="form-control" placeholder="Tên topping (ví dụ: Trân châu đen, Thạch dừa...)" required></div>
+      <div class="col-md-4">
+        <div class="input-group">
+          <input name="price" type="number" min="0" step="1" class="form-control" placeholder="Giá (VND)" required>
+          <span class="input-group-text">đ</span>
+        </div>
+      </div>
+      <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card" data-batch-form data-endpoint="/toppings">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-bold">Danh sách Topping</span>
+    <button type="button" class="btn btn-primary btn-sm" data-batch-save>
+      <i class="bi bi-save"></i> Lưu thay đổi
+    </button>
+  </div>
+  <div class="card-body">
+    <div data-batch-notice></div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr><th>Tên topping</th><th class="text-end">Giá</th><th class="text-center">Đang dùng</th></tr>
+        </thead>
+        <tbody>
+          <% toppings.forEach(function(t){ %>
+          <tr data-row data-syncid="<%= t.syncId %>">
+            <td><input data-field="name" value="<%= t.name %>" class="form-control form-control-sm"></td>
+            <td style="max-width:160px">
+              <div class="input-group input-group-sm">
+                <input data-field="price" type="number" min="0" step="1" value="<%= t.price %>" class="form-control text-end">
+                <span class="input-group-text">đ</span>
+              </div>
+            </td>
+            <td class="text-center">
+              <input class="form-check-input" type="checkbox" data-field="active" <%= t.active ? 'checked' : '' %>>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!toppings.length) { %><tr><td colspan="3" class="text-center text-muted">Chưa có topping</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<p class="text-muted small mt-2">
+  Sửa trực tiếp trên bảng rồi bấm <b>Lưu thay đổi</b> — chỉ những dòng bạn sửa mới được gửi lên.
+</p>
+
+<script src="/batch-save.js"></script>
+
+<%- include('partials/footer') %>

@@ -52,6 +52,15 @@ export type StaffRole = (typeof StaffRole)[keyof typeof StaffRole];
 
 // ---- Master data: server is the source of truth, POS pulls ------------------
 
+export interface Topping {
+  syncId: string;
+  name: string;
+  /** Integer VND. */
+  price: number;
+  active: boolean;
+  updatedAtMs: number;
+}
+
 export interface Product {
   syncId: string;
   name: string;
@@ -60,6 +69,7 @@ export interface Product {
   category: string;
   active: boolean;
   updatedAtMs: number;
+  toppingSyncIds?: string[];
 }
 
 /**
@@ -191,6 +201,7 @@ export interface SyncPushResponse {
 /** Server -> POS. Master data plus this terminal's private code batch. */
 export interface SyncPullResponse {
   products: Product[];
+  toppings: Topping[];
   staff: StaffCredential[];
   discountCodes: DiscountCodeAssignment[];
   serverTimeMs: number;

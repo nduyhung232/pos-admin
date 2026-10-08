@@ -49,7 +49,7 @@
     <div class="table-responsive">
       <table class="table table-sm mb-0 align-middle">
         <thead class="table-light">
-          <tr><th>Tên</th><th>Danh mục</th><th class="text-end">Giá</th><th class="text-center">Trạng thái</th></tr>
+          <tr><th>Tên</th><th>Danh mục</th><th class="text-end">Giá</th><th>Topping đi kèm</th><th class="text-center">Trạng thái</th></tr>
         </thead>
         <tbody>
           <% products.forEach(function(p){ %>
@@ -62,20 +62,135 @@
                 <span class="input-group-text">đ</span>
               </div>
             </td>
+            <td>
+              <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2"
+                      onclick="openToppingModal('<%= p.syncId %>', '<%- p.name.replace(/'/g, "\\'") %>', <%= JSON.stringify((p.toppings || []).map(function(t){ return t.syncId; })) %>)">
+                <i class="bi bi-egg-fried"></i>
+                <span id="topping-badge-<%= p.syncId %>">
+                  <%= (p.toppings && p.toppings.length) ? (p.toppings.length + ' topping') : 'Chưa chọn' %>
+                </span>
+              </button>
+            </td>
             <td class="text-center">
               <input class="form-check-input" type="checkbox" data-field="active" <%= p.active ? 'checked' : '' %>>
             </td>
           </tr>
           <% }) %>
-          <% if (!products.length) { %><tr><td colspan="4" class="text-center text-muted">Chưa có món</td></tr><% } %>
+          <% if (!products.length) { %><tr><td colspan="5" class="text-center text-muted">Chưa có món</td></tr><% } %>
         </tbody>
       </table>
     </div>
   </div>
 </div>
 <p class="text-muted small mt-2">
-  Sửa trực tiếp trên bảng rồi bấm <b>Lưu thay đổi</b> — chỉ những dòng bạn sửa mới được gửi lên.
+  Sửa trực tiếp trên bảng rồi bấm <b>Lưu thay đổi</b> — chỉ những dòng bạn sửa mới được gửi lên. Bấm vào nút <b>Topping</b> ở mỗi món để gán topping đi kèm.
 </p>
+
+<!-- Modal cấu hình topping cho từng món -->
+<div class="modal fade" id="toppingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-egg-fried"></i> Chọn topping cho: <span id="modalProductName" class="text-primary"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between mb-2">
+          <small class="text-muted">Tích chọn các topping được phép thêm vào món này:</small>
+          <div>
+            <button type="button" class="btn btn-link btn-sm p-0 me-2" onclick="toggleAllToppings(true)">Tất cả</button>
+            <button type="button" class="btn btn-link btn-sm p-0 text-secondary" onclick="toggleAllToppings(false)">Bỏ chọn</button>
+          </div>
+        </div>
+        <div id="modalToppingList" class="border rounded p-2" style="max-height: 280px; overflow-y: auto;">
+          <% if (allToppings && allToppings.length) { %>
+            <% allToppings.forEach(function(t){ %>
+              <div class="form-check py-1">
+                <input class="form-check-input topping-checkbox" type="checkbox" value="<%= t.syncId %>" id="modalTop_<%= t.syncId %>">
+                <label class="form-check-label d-flex justify-content-between w-100" for="modalTop_<%= t.syncId %>">
+                  <span><%= t.name %></span>
+                  <span class="text-muted small"><%= t.price.toLocaleString('vi-VN') %> đ</span>
+                </label>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="text-center text-muted py-3">Chưa có topping nào. Vào mục <b>Quản lý Topping</b> để thêm trước.</div>
+          <% } %>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnSaveProductToppings" onclick="saveProductToppings()">
+          <i class="bi bi-check-lg"></i> Lưu cấu hình topping
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var activeProductSyncId = null;
+var toppingModalInstance = null;
+
+function openToppingModal(syncId, name, currentToppingIds) {
+  activeProductSyncId = syncId;
+  document.getElementById('modalProductName').textContent = name;
+
+  // Reset checkboxes
+  document.querySelectorAll('.topping-checkbox').forEach(function(cb) {
+    cb.checked = currentToppingIds && currentToppingIds.indexOf(cb.value) !== -1;
+  });
+
+  if (!toppingModalInstance) {
+    toppingModalInstance = new bootstrap.Modal(document.getElementById('toppingModal'));
+  }
+  toppingModalInstance.show();
+}
+
+function toggleAllToppings(check) {
+  document.querySelectorAll('.topping-checkbox').forEach(function(cb) {
+    cb.checked = check;
+  });
+}
+
+function saveProductToppings() {
+  if (!activeProductSyncId) return;
+  var selected = [];
+  document.querySelectorAll('.topping-checkbox:checked').forEach(function(cb) {
+    selected.push(cb.value);
+  });
+
+  var btn = document.getElementById('btnSaveProductToppings');
+  btn.disabled = true;
+  var original = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang lưu...';
+
+  fetch('/products/' + activeProductSyncId + '/toppings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ toppingSyncIds: selected })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data && data.ok) {
+      var badge = document.getElementById('topping-badge-' + activeProductSyncId);
+      if (badge) {
+        badge.textContent = selected.length ? (selected.length + ' topping') : 'Chưa chọn';
+      }
+      toppingModalInstance.hide();
+    } else {
+      alert('Không thể lưu topping: ' + ((data && data.error) || 'Lỗi'));
+    }
+  })
+  .catch(function(err) {
+    alert('Lỗi kết nối: ' + err.message);
+  })
+  .finally(function() {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  });
+}
+</script>
 
 <script src="/batch-save.js"></script>
 

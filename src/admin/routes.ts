@@ -233,14 +233,32 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     const session = await requireManager(req, res, prisma, 'redirect');
     if (!session) return;
 
-    const products = await prisma.product.findMany({
-      orderBy: [{ active: 'desc' }, { category: 'asc' }, { name: 'asc' }],
-      select: { syncId: true, name: true, price: true, category: true, active: true },
-    });
+    const [products, allToppings] = await Promise.all([
+      prisma.product.findMany({
+        orderBy: [{ active: 'desc' }, { category: 'asc' }, { name: 'asc' }],
+        select: {
+          syncId: true,
+          name: true,
+          price: true,
+          category: true,
+          active: true,
+          toppings: {
+            select: { syncId: true, name: true, price: true, active: true },
+          },
+        },
+      }),
+      prisma.topping.findMany({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+        select: { syncId: true, name: true, price: true },
+      }),
+    ]);
+
     res.render('products', {
       active: 'products',
       session,
       products,
+      allToppings,
       error: typeof req.query.error === 'string' ? req.query.error : null,
       notice: typeof req.query.notice === 'string' ? req.query.notice : null,
     });
@@ -337,6 +355,143 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       const prev = before.get(c.syncId)!;
       await audit(prisma, session.staffSyncId, 'update', 'product', c.syncId, {
         before: { name: prev.name, price: prev.price, category: prev.category, active: prev.active },
+        after: c,
+      });
+    }
+
+  app.post('/products/:syncId/toppings', async (req: Request, res: Response) => {
+    const session = await requireManager(req, res, prisma, 'json');
+    if (!session) return;
+
+    const schema = z.object({
+      toppingSyncIds: z.array(z.string().uuid()),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'invalid' });
+
+    const product = await prisma.product.findUnique({
+      where: { syncId: req.params.syncId },
+      select: { id: true, syncId: true },
+    });
+    if (!product) return res.status(404).json({ ok: false, error: 'not_found' });
+
+    const nowMs = BigInt(Date.now());
+    await prisma.product.update({
+      where: { syncId: product.syncId },
+      data: {
+        updatedAtMs: nowMs,
+        toppings: {
+          set: parsed.data.toppingSyncIds.map((id) => ({ syncId: id })),
+        },
+      },
+    });
+
+    await audit(prisma, session.staffSyncId, 'update', 'product_toppings', product.syncId, {
+      toppingSyncIds: parsed.data.toppingSyncIds,
+    });
+
+    res.json({ ok: true });
+  });
+
+  // ---- Toppings ------------------------------------------------------------
+
+  app.get('/toppings', async (req: Request, res: Response) => {
+    const session = await requireManager(req, res, prisma, 'redirect');
+    if (!session) return;
+
+    const toppings = await prisma.topping.findMany({
+      orderBy: [{ active: 'desc' }, { name: 'asc' }],
+      select: { syncId: true, name: true, price: true, active: true },
+    });
+    res.render('toppings', {
+      active: 'toppings',
+      session,
+      toppings,
+      error: typeof req.query.error === 'string' ? req.query.error : null,
+      notice: typeof req.query.notice === 'string' ? req.query.notice : null,
+    });
+  });
+
+  app.post('/toppings', async (req: Request, res: Response) => {
+    const session = await requireManager(req, res, prisma, 'redirect');
+    if (!session) return;
+
+    const schema = z.object({
+      name: z.string().min(1).max(200),
+      price: z.coerce.number().int().nonnegative().max(100_000_000),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.redirect('/toppings');
+
+    const nowMs = Date.now();
+    const topping = await prisma.topping.create({
+      data: {
+        syncId: randomUUID(),
+        name: parsed.data.name.trim(),
+        price: parsed.data.price,
+        active: true,
+        createdAtMs: BigInt(nowMs),
+        updatedAtMs: BigInt(nowMs),
+      },
+      select: { syncId: true, name: true, price: true },
+    });
+
+    await audit(prisma, session.staffSyncId, 'create', 'topping', topping.syncId, {
+      name: topping.name,
+      price: topping.price,
+    });
+    res.redirect('/toppings?notice=created');
+  });
+
+  app.patch('/toppings', async (req: Request, res: Response) => {
+    const session = await requireManager(req, res, prisma, 'json');
+    if (!session) return;
+
+    const schema = z.object({
+      changes: z
+        .array(
+          z.object({
+            syncId: z.string().uuid(),
+            name: z.string().min(1).max(200).optional(),
+            price: z.number().int().nonnegative().max(100_000_000).optional(),
+            active: z.boolean().optional(),
+          }),
+        )
+        .min(1)
+        .max(1000),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'invalid' });
+
+    const changes = parsed.data.changes.filter(
+      (c) => c.name !== undefined || c.price !== undefined || c.active !== undefined,
+    );
+    if (changes.length === 0) return res.json({ ok: true, updated: 0 });
+
+    const syncIds = changes.map((c) => c.syncId);
+    const existing = await prisma.topping.findMany({
+      where: { syncId: { in: syncIds } },
+      select: { syncId: true, name: true, price: true, active: true },
+    });
+    const before = new Map(existing.map((t) => [t.syncId, t]));
+    if (syncIds.some((id) => !before.has(id))) {
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+
+    const nowMs = BigInt(Date.now());
+    await prisma.$transaction(
+      changes.map((c) => {
+        const { syncId, ...fields } = c;
+        const data: Record<string, unknown> = { ...fields, updatedAtMs: nowMs };
+        if (typeof fields.name === 'string') data.name = fields.name.trim();
+        return prisma.topping.update({ where: { syncId }, data });
+      }),
+    );
+
+    for (const c of changes) {
+      const prev = before.get(c.syncId)!;
+      await audit(prisma, session.staffSyncId, 'update', 'topping', c.syncId, {
+        before: { name: prev.name, price: prev.price, active: prev.active },
         after: c,
       });
     }
