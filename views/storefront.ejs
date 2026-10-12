@@ -170,12 +170,20 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      min-width: 0;
     }
     .header-logo {
-      height: 46px;
-      width: auto;
+      height: 44px;
+      width: 44px;
       object-fit: contain;
-      border-radius: var(--radius-sm);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .header-brand-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
     }
     .header-brand-info h1 {
       font-size: 1.15rem;
@@ -183,14 +191,27 @@
       color: var(--primary);
       line-height: 1.2;
       letter-spacing: -0.02em;
+      white-space: nowrap;
     }
     .header-brand-info span {
       font-size: 0.74rem;
       color: var(--accent-warm);
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      display: block;
+      white-space: nowrap;
+    }
+    .call-text-desktop {
+      display: inline;
+    }
+    .call-text-mobile {
+      display: none;
+    }
+    .top-bar-text-desk {
+      display: inline;
+    }
+    .top-bar-text-mobi {
+      display: none;
     }
 
     /* Nav Links (Desktop) */
@@ -216,6 +237,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-shrink: 0;
     }
     .btn-call-header {
       background: var(--primary);
@@ -229,6 +251,7 @@
       gap: 8px;
       box-shadow: 0 4px 14px rgba(27, 67, 50, 0.2);
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
     .btn-call-header:hover {
       background: var(--primary-light);
@@ -441,7 +464,7 @@
 
     /* ---- 4 VALUE PILLARS (GIÁ TRỊ CỐT LÕI) ---- */
     .section-values {
-      padding: 32px 0 64px;
+      padding: 36px 0 60px;
     }
     .values-grid {
       display: grid;
@@ -450,38 +473,66 @@
     }
     .value-card {
       background: #ffffff;
-      padding: 24px 20px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border-subtle);
       box-shadow: var(--shadow-sm);
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      overflow: hidden;
     }
     .value-card:hover {
       transform: translateY(-6px);
       box-shadow: var(--shadow-md);
       border-color: rgba(45, 106, 79, 0.25);
     }
-    .value-icon-box {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-sm);
-      background: var(--primary-tint);
-      color: var(--primary);
-      font-size: 1.4rem;
-      display: flex;
+    .value-card-thumb {
+      position: relative;
+      aspect-ratio: 16/11;
+      overflow: hidden;
+      background: #f1f5f9;
+    }
+    .value-card-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+    .value-card:hover .value-card-thumb img {
+      transform: scale(1.06);
+    }
+    .value-pill-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: rgba(27, 67, 50, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
+      gap: 4px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    .value-card-body {
+      padding: 16px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-grow: 1;
     }
     .value-card h3 {
-      font-size: 1.05rem;
+      font-size: 1.02rem;
       font-weight: 800;
       color: var(--primary);
+      line-height: 1.3;
     }
     .value-card p {
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       line-height: 1.55;
     }
@@ -1312,23 +1363,130 @@
       body {
         padding-bottom: 96px;
       }
+      .top-bar {
+        font-size: 0.74rem;
+        padding: 5px 12px;
+        line-height: 1.3;
+      }
+      .top-bar-text-desk {
+        display: none;
+      }
+      .top-bar-text-mobi {
+        display: inline;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .header-inner {
-        height: 64px;
+        height: 58px;
       }
       .header-logo {
         height: 38px;
+        width: 38px;
+      }
+      .header-brand {
+        gap: 8px;
+      }
+      .header-brand-info h1 {
+        font-size: 0.98rem;
+        white-space: nowrap;
+      }
+      .header-brand-info span {
+        font-size: 0.68rem;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+      .call-text-desktop {
+        display: none;
+      }
+      .call-text-mobile {
+        display: inline;
+      }
+      .btn-call-header {
+        padding: 7px 12px;
+        font-size: 0.8rem;
+        gap: 5px;
+        white-space: nowrap;
       }
       .hero {
-        padding: 24px 0 40px;
+        padding: 18px 0 32px;
+      }
+      .hero-tag {
+        font-size: 0.72rem;
+        padding: 4px 10px;
+        margin-bottom: 12px;
       }
       .hero-title {
-        font-size: 2rem;
+        font-size: 1.85rem;
+        margin-bottom: 12px;
+        line-height: 1.2;
       }
       .hero-desc {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
+        margin-bottom: 18px;
+        line-height: 1.55;
+      }
+      .hero-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      .btn-primary-hero, .btn-secondary-hero {
+        width: 100%;
+        padding: 11px 8px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        justify-content: center;
+        text-align: center;
+        border-radius: var(--radius-full);
+        white-space: nowrap;
+      }
+      .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding-top: 14px;
+        text-align: center;
+      }
+      .stat-pill {
+        flex-direction: column;
+        gap: 2px;
+        align-items: center;
+      }
+      .stat-pill i {
+        font-size: 1.1rem;
+      }
+      .stat-pill strong {
+        font-size: 0.82rem;
+      }
+      .stat-pill span {
+        font-size: 0.68rem;
       }
       .values-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .value-card-thumb {
+        aspect-ratio: 4/3;
+      }
+      .value-pill-badge {
+        font-size: 0.64rem;
+        padding: 2px 6px;
+        bottom: 6px;
+        left: 6px;
+      }
+      .value-card-body {
+        padding: 10px 10px 14px;
+        gap: 4px;
+      }
+      .value-card h3 {
+        font-size: 0.88rem;
+      }
+      .value-card p {
+        font-size: 0.74rem;
+        line-height: 1.4;
       }
       .products-grid {
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1381,7 +1539,8 @@
   <!-- TOP LIVE ANNOUNCEMENT BAR -->
   <aside class="top-bar" aria-label="Thông báo cửa hàng">
     <span class="live-dot" aria-hidden="true"></span>
-    <span>🌿 <strong>Chè Thong Dong:</strong> Đang mở cửa đón khách • 09:00 - 22:30 mỗi ngày • Hotline: <a href="tel:<%= storeInfo.phone %>" style="color: #fde047; text-decoration: underline;"><%= storeInfo.phoneDisplay %></a></span>
+    <span class="top-bar-text-desk">🌿 <strong>Chè Thong Dong:</strong> Đang mở cửa đón khách • 09:00 - 22:30 mỗi ngày • Hotline: <a href="tel:<%= storeInfo.phone %>" style="color: #fde047; text-decoration: underline;"><%= storeInfo.phoneDisplay %></a></span>
+    <span class="top-bar-text-mobi">🌿 <strong>Mở cửa:</strong> 09:00 - 22:30 • Hotline: <a href="tel:<%= storeInfo.phone %>" style="color: #fde047; text-decoration: underline;"><%= storeInfo.phoneDisplay %></a></span>
   </aside>
 
   <!-- STICKY NAVBAR -->
@@ -1389,7 +1548,7 @@
     <div class="container">
       <div class="header-inner">
         <a href="/menu" class="header-brand" aria-label="Trang chủ Chè Thong Dong">
-          <img src="<%= storeInfo.logoPath %>" alt="Logo Chè Thong Dong" class="header-logo" onerror="this.src='/logo_icon.png'">
+          <img src="/logo_icon.png" alt="Logo Chè Thong Dong" class="header-logo" onerror="this.src='<%= storeInfo.logoPath %>'">
           <div class="header-brand-info">
             <h1><%= storeInfo.brandName %></h1>
             <span><%= storeInfo.subTitle %></span>
@@ -1408,9 +1567,10 @@
         </nav>
 
         <div class="header-cta-group">
-          <a href="tel:<%= storeInfo.phone %>" class="btn-call-header" aria-label="Gọi hotline">
+          <a href="tel:<%= storeInfo.phone %>" class="btn-call-header" aria-label="Gọi hotline <%= storeInfo.phoneDisplay %>">
             <i class="bi bi-telephone-fill" aria-hidden="true"></i>
-            <span><%= storeInfo.phoneDisplay %></span>
+            <span class="call-text-desktop"><%= storeInfo.phoneDisplay %></span>
+            <span class="call-text-mobile">Gọi ngay</span>
           </a>
         </div>
       </div>
@@ -1448,22 +1608,22 @@
             <div class="stat-pill">
               <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
               <div>
-                <strong>30+ Món Ngon</strong>
+                <strong>30+ Món</strong>
                 <span>Chè &amp; Đá bào</span>
               </div>
             </div>
             <div class="stat-pill">
               <i class="bi bi-droplet-half" aria-hidden="true"></i>
               <div>
-                <strong>100% Cốt Dừa Tươi</strong>
-                <span>Ép nguyên chất</span>
+                <strong>100% Cốt Dừa</strong>
+                <span>Nguyên chất</span>
               </div>
             </div>
             <div class="stat-pill">
               <i class="bi bi-shield-heart-fill" aria-hidden="true"></i>
               <div>
-                <strong>Không Phẩm Màu</strong>
-                <span>Nguyên liệu sạch</span>
+                <strong>Tươi Sạch</strong>
+                <span>0 Phẩm màu</span>
               </div>
             </div>
           </div>
@@ -1492,35 +1652,47 @@
     <div class="container">
       <div class="values-grid">
         <div class="value-card">
-          <div class="value-icon-box">
-            <i class="bi bi-droplet-fill"></i>
+          <div class="value-card-thumb">
+            <img src="/images/pillar_cot_dua.webp" alt="Nước cốt dừa tươi nguyên chất" loading="lazy" width="300" height="206">
+            <span class="value-pill-badge"><i class="bi bi-droplet-fill"></i> 100% Cốt Dừa Tươi</span>
           </div>
-          <h3>Cốt Dừa Tươi Ép Ngày</h3>
-          <p>Nước cốt dừa tươi nguyên chất sánh mịn, thơm béo tự nhiên mà không ngấy, hoàn toàn không pha phụ gia.</p>
+          <div class="value-card-body">
+            <h3>Cốt Dừa Tươi Ép Ngày</h3>
+            <p>Nước cốt dừa tươi nguyên chất sánh mịn, thơm béo tự nhiên mà không ngấy, hoàn toàn không pha phụ gia.</p>
+          </div>
         </div>
 
         <div class="value-card">
-          <div class="value-icon-box">
-            <i class="bi bi-brightness-alt-high-fill"></i>
+          <div class="value-card-thumb">
+            <img src="/images/pillar_thot_not.webp" alt="Đường thốt nốt An Giang" loading="lazy" width="300" height="206">
+            <span class="value-pill-badge"><i class="bi bi-brightness-alt-high-fill"></i> Thốt Nốt An Giang</span>
           </div>
-          <h3>Đường Thốt Nốt Thơm Dịu</h3>
-          <p>Vị ngọt thanh tao đặc trưng của thốt nốt An Giang, hậu vị mát lành thanh lọc không gây gắt cổ.</p>
+          <div class="value-card-body">
+            <h3>Đường Thốt Nốt Thơm Dịu</h3>
+            <p>Vị ngọt thanh tao đặc trưng của thốt nốt An Giang, hậu vị mát lành thanh lọc không gây gắt cổ.</p>
+          </div>
         </div>
 
         <div class="value-card">
-          <div class="value-icon-box">
-            <i class="bi bi-snow"></i>
+          <div class="value-card-thumb">
+            <img src="/images/pillar_da_bao.webp" alt="Đá bào tuyết siêu mịn" loading="lazy" width="300" height="206">
+            <span class="value-pill-badge"><i class="bi bi-snow"></i> Tuyết Mịn Như Mây</span>
           </div>
-          <h3>Đá Bào Tuyết Siêu Mịn</h3>
-          <p>Tuyết đá bào mềm mịn như bông gòn, quyện đẫm sốt trái cây nhiệt đới tươi mát lạnh sảng khoái.</p>
+          <div class="value-card-body">
+            <h3>Đá Bào Tuyết Siêu Mịn</h3>
+            <p>Tuyết đá bào mềm mịn như bông gòn, quyện đẫm sốt trái cây nhiệt đới tươi mát lạnh sảng khoái.</p>
+          </div>
         </div>
 
         <div class="value-card">
-          <div class="value-icon-box">
-            <i class="bi bi-flower1"></i>
+          <div class="value-card-thumb">
+            <img src="/images/pillar_thao_moc.webp" alt="Thảo mộc nấu mới mỗi sáng" loading="lazy" width="300" height="206">
+            <span class="value-pill-badge"><i class="bi bi-flower1"></i> Nấu Mới Mỗi Sáng</span>
           </div>
-          <h3>Thảo Mộc Nấu Mới</h3>
-          <p>Hạt sen Huế, củ năng giòn, sương sáo Đài Loan được chế biến tươi mới mỗi ngày bảo toàn dinh dưỡng.</p>
+          <div class="value-card-body">
+            <h3>Thảo Mộc Nấu Mới</h3>
+            <p>Hạt sen Huế, củ năng giòn, sương sáo Đài Loan được chế biến tươi mới mỗi ngày bảo toàn dinh dưỡng.</p>
+          </div>
         </div>
       </div>
     </div>
