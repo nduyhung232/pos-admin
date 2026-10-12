@@ -188,6 +188,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
   app.get('/logout', handleLogout);
 
   app.get('/', (_req: Request, res: Response) => res.redirect('/reports'));
+  app.get('/admin', (_req: Request, res: Response) => res.redirect('/reports'));
 
   // ---- Revenue report (home) ----------------------------------------------
 

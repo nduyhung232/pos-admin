@@ -21,6 +21,7 @@ import { loadConfig } from './config.ts';
 import { prisma } from './db.ts';
 import { registerSyncRoutes } from './sync/routes.ts';
 import { registerAdminRoutes } from './admin/routes.ts';
+import { registerStorefrontRoutes } from './storefront/routes.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig();
@@ -65,6 +66,9 @@ registerSyncRoutes(app, prisma);
 
 // Web admin (manager session, server-rendered).
 registerAdminRoutes(app, prisma, config);
+
+// Public storefront & digital menu (/menu, /gioi-thieu, /cua-hang, /tiem-che).
+registerStorefrontRoutes(app, prisma);
 
 async function ensureDefaultStaff() {
   const defaultAccounts = [
