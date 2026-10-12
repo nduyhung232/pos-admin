@@ -573,16 +573,12 @@
       border-bottom: 1px solid var(--border-subtle);
     }
 
-    /* Search & Filter Controls */
+    /* Search & Filter Controls (Static layout, no floating/sticky) */
     .menu-filter-wrapper {
-      position: sticky;
-      top: 72px;
-      z-index: 90;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 16px 0 12px;
-      margin-bottom: 32px;
+      position: static;
+      background: transparent;
+      padding: 8px 0 20px;
+      margin-bottom: 28px;
       border-bottom: 1px solid var(--border-subtle);
     }
     .filter-bar-inner {
