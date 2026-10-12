@@ -39,7 +39,13 @@ app.use((req, _res, next) => {
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(
+  express.static(path.join(__dirname, '..', 'public'), {
+    maxAge: '7d',
+    etag: true,
+    lastModified: true,
+  }),
+);
 
 // The sync API is JSON; the admin pages are form posts. Support both.
 app.use(express.json({ limit: '8mb' }));

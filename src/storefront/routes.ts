@@ -31,7 +31,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 30000,
     category: 'Chè Truyền Thống',
     description: 'Cùi bưởi giòn sần sật khử đắng kỹ lưỡng, đỗ xanh mềm bùi, đường thốt nốt thơm vàng hòa cùng nước cốt dừa tươi sánh mịn.',
-    image: '/images/che_buoi.jpg',
+    image: '/images/che_buoi.webp',
     badge: 'Best Seller',
     isSignature: true,
     toppings: ['Nước cốt dừa thêm', 'Dừa non sợi', 'Hạt sen bùi'],
@@ -42,7 +42,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 35000,
     category: 'Chè Thảo Mộc',
     description: 'Viên khoai lang vàng, khoai môn tím, khoai matcha dẻo dai tự nhiên, sương sáo Đài Loan mát lành, hạt sen bùi béo và cốt dừa thanh dịu.',
-    image: '/images/che_khoai_deo.jpg',
+    image: '/images/che_khoai_deo.webp',
     badge: 'Được Yêu Thích',
     isSignature: true,
     toppings: ['Trân châu củ năng', 'Sương sáo', 'Hạt sen bùi'],
@@ -53,7 +53,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 35000,
     category: 'Đá Bào Tuyết',
     description: 'Tuyết sữa bào mịn như bông gòn tan ngay đầu lưỡi, rưới sốt quả nhiệt đới, xoài chín, mít nghệ, thạch trân châu ngũ sắc.',
-    image: '/images/da_bao_tuyet.jpg',
+    image: '/images/da_bao_tuyet.webp',
     badge: 'Signature',
     isSignature: true,
     toppings: ['Thạch phô mai', 'Trân châu ngọc trai', 'Sữa đặc thêm'],
@@ -64,7 +64,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 32000,
     category: 'Chè Truyền Thống',
     description: 'Cơm dừa non mềm dẻo thanh ngọt, thạch lá dứa tươi xanh mát lịm, trân châu sương sa rưới cốt dừa béo bùi ngậy vị.',
-    image: '/images/che_dua_non.jpg',
+    image: '/images/che_dua_non.webp',
     badge: 'Best Seller',
     isSignature: true,
     toppings: ['Dừa non sợi', 'Thạch lá dứa', 'Trân châu đường đen'],
@@ -75,7 +75,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 38000,
     category: 'Trà Trái Cây',
     description: 'Trà ô long thượng hạng ủ lạnh, hạt sen Huế hầm nhừ ngọt bùi, củ năng giòn sần sật, phủ lớp kem macchiato mặn béo.',
-    image: '/images/tra_sen_vang.jpg',
+    image: '/images/tra_sen_vang.webp',
     badge: 'Món Mới',
     isSignature: true,
     toppings: ['Kem cheese macchiato', 'Củ năng ngâm', 'Hạt sen Huế'],
@@ -86,7 +86,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 35000,
     category: 'Chè Hiện Đại',
     description: 'Khúc bạch phô mai sữa mềm mịn tan biến, nhãn lồng tươi mọng nước, nước đường phèn hoa nhài thanh dịu rắc hạnh nhân lát rang vàng.',
-    image: '/images/hero_dessert.jpg',
+    image: '/images/hero_dessert.webp',
     badge: 'Thanh Mát',
     toppings: ['Hạnh nhân lát', 'Nhãn tươi', 'Khúc bạch thêm'],
   },
@@ -96,7 +96,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 40000,
     category: 'Chè Hiện Đại',
     description: 'Cơm sầu riêng Ri6 thơm nồng nàn, mít nghệ xắt sợi, thạch ngọc bích, sương sáo, hạt lựu hòa quyện nước cốt dừa béo ngậy.',
-    image: '/images/che_buoi.jpg',
+    image: '/images/che_buoi.webp',
     badge: 'Đặc Biệt',
     toppings: ['Thịt sầu riêng thêm', 'Trân châu củ năng'],
   },
@@ -106,7 +106,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 35000,
     category: 'Đá Bào Tuyết',
     description: 'Lớp đá tuyết mềm mượt rưới đẫm sốt xoài cát Hòa Lộc nguyên chất, thạch dừa giòn sần sật, rưới sữa đặc thơm béo.',
-    image: '/images/da_bao_tuyet.jpg',
+    image: '/images/da_bao_tuyet.webp',
     badge: 'Mát Lạnh',
     toppings: ['Thạch dừa', 'Xoài tươi', 'Kem vanilla'],
   },
@@ -116,7 +116,7 @@ export const SIGNATURE_ITEMS: StoreProduct[] = [
     price: 32000,
     category: 'Trà Trái Cây',
     description: 'Trà đen đậm đà ủ lạnh, đào ngâm giòn ngọt, cam vàng mọng nước cùng hương sả nồng nàn giải nhiệt cực đã.',
-    image: '/images/tra_sen_vang.jpg',
+    image: '/images/tra_sen_vang.webp',
     badge: 'Giải Nhiệt',
     toppings: ['Đào miếng thêm', 'Hạt chia'],
   },
@@ -134,12 +134,12 @@ export const TOPPINGS_LIST = [
 
 function resolveDishImage(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes('bưởi') || n.includes('buoi')) return '/images/che_buoi.jpg';
-  if (n.includes('khoai') || n.includes('thảo mộc') || n.includes('thao moc')) return '/images/che_khoai_deo.jpg';
-  if (n.includes('bào') || n.includes('bao') || n.includes('tuyết') || n.includes('tuyet')) return '/images/da_bao_tuyet.jpg';
-  if (n.includes('dừa') || n.includes('dua')) return '/images/che_dua_non.jpg';
-  if (n.includes('sen') || n.includes('trà') || n.includes('tra') || n.includes('cam') || n.includes('đào')) return '/images/tra_sen_vang.jpg';
-  return '/images/hero_dessert.jpg';
+  if (n.includes('bưởi') || n.includes('buoi')) return '/images/che_buoi.webp';
+  if (n.includes('khoai') || n.includes('thảo mộc') || n.includes('thao moc')) return '/images/che_khoai_deo.webp';
+  if (n.includes('bào') || n.includes('bao') || n.includes('tuyết') || n.includes('tuyet')) return '/images/da_bao_tuyet.webp';
+  if (n.includes('dừa') || n.includes('dua')) return '/images/che_dua_non.webp';
+  if (n.includes('sen') || n.includes('trà') || n.includes('tra') || n.includes('cam') || n.includes('đào')) return '/images/tra_sen_vang.webp';
+  return '/images/hero_dessert.webp';
 }
 
 export function registerStorefrontRoutes(app: Express, prisma: PrismaClient): void {
