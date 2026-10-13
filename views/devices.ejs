@@ -1,53 +1,270 @@
 <%- include('partials/header') %>
 
-<h4 class="mb-3"><i class="bi bi-tablet"></i> Máy POS</h4>
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="mb-1 fw-bold text-dark"><i class="bi bi-tablet-fill text-primary me-2"></i>Quản lý máy POS & Giám sát bộ nhớ</h4>
+    <p class="text-muted small mb-0">Theo dõi thông tin thiết bị, dữ liệu lưu trữ SQLite, bộ nhớ đệm và khuyến nghị tối ưu/sao lưu tự động qua PUSH</p>
+  </div>
+</div>
 
 <% if (created) { %>
-<div class="alert alert-success py-2"><i class="bi bi-check-circle"></i> Đã đăng ký máy. Nhập token vừa đặt vào máy POS (mục Đồng bộ) để kết nối.</div>
+<div class="alert alert-success py-2 d-flex align-items-center gap-2 shadow-sm">
+  <i class="bi bi-check-circle-fill fs-5"></i>
+  <div>Đã đăng ký máy POS thành công! Nhập token vừa đặt vào mục <strong>Cấu hình đồng bộ</strong> trên máy POS để kết nối.</div>
+</div>
 <% } %>
 <% if (error) { %>
-<div class="alert alert-warning py-2">
-  <% if (error === 'token_policy') { %>Token phải dài tối thiểu <%= minTokenLength %> ký tự.
-  <% } else if (error === 'token_taken') { %>Token này đã được dùng cho máy khác. Chọn token khác.
-  <% } else { %>Dữ liệu không hợp lệ.<% } %>
+<div class="alert alert-warning py-2 d-flex align-items-center gap-2 shadow-sm">
+  <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+  <div>
+    <% if (error === 'token_policy') { %>Token phải dài tối thiểu <%= minTokenLength %> ký tự.
+    <% } else if (error === 'token_taken') { %>Token này đã được dùng cho máy khác. Vui lòng chọn token khác.
+    <% } else { %>Dữ liệu nhập vào không hợp lệ.<% } %>
+  </div>
 </div>
 <% } %>
 
-<div class="card mb-4">
-  <div class="card-header fw-bold">Đăng ký máy POS mới</div>
-  <div class="card-body">
-    <form method="post" action="/devices" class="row g-2">
-      <div class="col-md-4"><input name="name" class="form-control" placeholder="Tên máy (VD: Quầy 1)" required></div>
-      <div class="col-md-5">
-        <input name="token" class="form-control" placeholder="Token (tự đặt, tối thiểu <%= minTokenLength %> ký tự)" minlength="<%= minTokenLength %>" required>
+<!-- Đăng ký máy mới -->
+<div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px;">
+  <div class="card-header bg-white py-3 fw-bold border-bottom-0 d-flex align-items-center gap-2">
+    <i class="bi bi-plus-circle text-primary"></i> Đăng ký máy POS mới
+  </div>
+  <div class="card-body pt-0">
+    <form method="post" action="/devices" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Tên máy POS</label>
+        <input name="name" class="form-control" placeholder="VD: Máy Thu ngân 1, POS Quầy..." required>
       </div>
-      <div class="col-md-3"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Đăng ký</button></div>
+      <div class="col-md-5">
+        <label class="form-label small text-muted mb-1">Mã kết nối (Token bảo mật)</label>
+        <input name="token" class="form-control" placeholder="Token tự đặt (tối thiểu <%= minTokenLength %> ký tự)" minlength="<%= minTokenLength %>" required>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100 fw-semibold"><i class="bi bi-plus-lg me-1"></i> Đăng ký máy</button>
+      </div>
     </form>
-    <p class="text-muted small mt-2 mb-0">
-      <i class="bi bi-info-circle"></i> Token do bạn tự đặt. Máy POS dùng đúng token này để nói chuyện với server.
-      Server chỉ lưu bản băm (SHA-256) — không lưu token gốc, nên hãy ghi nhớ token khi đặt.
-    </p>
+    <div class="text-muted small mt-2 d-flex align-items-center gap-1">
+      <i class="bi bi-shield-lock text-secondary"></i>
+      <span>Token do bạn tự đặt. Server chỉ lưu bản băm bảo mật SHA-256. Hãy ghi nhớ token để cấu hình trên app POS.</span>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header fw-bold">Danh sách máy</div>
-  <div class="card-body p-0 table-responsive">
-    <table class="table table-sm mb-0 align-middle">
-      <thead class="table-light"><tr><th>Tên</th><th class="text-center">Hoạt động</th><th>Sync gần nhất</th><th>Tạo lúc</th></tr></thead>
-      <tbody>
-        <% devices.forEach(function(d){ %>
-        <tr>
-          <td><%= d.name %></td>
-          <td class="text-center"><span class="badge <%= d.active ? 'bg-success' : 'bg-secondary' %>"><%= d.active ? 'Bật' : 'Tắt' %></span></td>
-          <td><%= d.lastSeenAtMs ? new Date(d.lastSeenAtMs).toLocaleString('vi-VN') : 'Chưa từng' %></td>
-          <td><%= new Date(d.createdAtMs).toLocaleString('vi-VN') %></td>
-        </tr>
-        <% }) %>
-        <% if (!devices.length) { %><tr><td colspan="4" class="text-center text-muted">Chưa có máy nào</td></tr><% } %>
-      </tbody>
-    </table>
+<!-- Danh sách thiết bị và Telemetry bộ nhớ -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-hdd-network text-secondary me-2"></i>Danh sách thiết bị & Phân bổ dữ liệu</h5>
+  <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-hdd-stack me-1"></i> Tổng số: <%= devices.length %> máy POS</span>
+</div>
+
+<% if (!devices.length) { %>
+<div class="card border-0 shadow-sm py-5 text-center text-muted" style="border-radius: 12px;">
+  <i class="bi bi-tablet display-4 mb-2 text-secondary opacity-50"></i>
+  <p class="mb-0">Chưa có máy POS nào được đăng ký. Hãy thêm máy POS ở trên.</p>
+</div>
+<% } %>
+
+<div class="row g-4">
+  <% devices.forEach(function(d){ %>
+  <div class="col-12">
+    <div class="card border-0 shadow-sm" style="border-radius: 14px; overflow: hidden;">
+      <!-- Header máy POS -->
+      <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="p-2 bg-primary-subtle text-primary rounded-3">
+            <i class="bi bi-tablet-fill fs-5"></i>
+          </span>
+          <div>
+            <h6 class="mb-0 fw-bold text-dark fs-6"><%= d.name %></h6>
+            <div class="small text-muted">ID: #<%= d.id %> • Ngày tạo: <%= new Date(d.createdAtMs).toLocaleString('vi-VN') %></div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge <%= d.active ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary' %> px-2.5 py-1.5">
+            <i class="bi <%= d.active ? 'bi-check-circle-fill' : 'bi-pause-circle' %> me-1"></i><%= d.active ? 'Đang hoạt động' : 'Tạm dừng' %>
+          </span>
+          <span class="badge bg-light text-dark border px-2.5 py-1.5">
+            <i class="bi bi-clock-history text-muted me-1"></i>Sync gần nhất: <%= d.lastSeenAtMs ? new Date(d.lastSeenAtMs).toLocaleString('vi-VN') : 'Chưa từng' %>
+          </span>
+          <% if (d.storage) { %>
+            <% if (d.storage.statusLevel === 'DANGER') { %>
+              <span class="badge bg-danger text-white px-2.5 py-1.5"><i class="bi bi-exclamation-triangle-fill me-1"></i>NGUY CẤP: BỘ NHỚ GẦN ĐẦY</span>
+            <% } else if (d.storage.statusLevel === 'WARNING') { %>
+              <span class="badge bg-warning text-dark px-2.5 py-1.5"><i class="bi bi-exclamation-circle-fill me-1"></i>CẢNH BÁO BỘ NHỚ</span>
+            <% } else { %>
+              <span class="badge bg-success text-white px-2.5 py-1.5"><i class="bi bi-check-circle-fill me-1"></i>BỘ NHỚ AN TOÀN (&lt;80%)</span>
+            <% } %>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="card-body p-4">
+        <% if (d.storage) { %>
+          <!-- Thanh tiến trình dung lượng máy POS -->
+          <div class="mb-4 p-3 bg-light rounded-3 border">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="fw-semibold text-dark small">
+                <i class="bi bi-device-hdd me-1 text-primary"></i> Dung lượng ổ cứng máy POS (Hệ điều hành & Ứng dụng)
+              </span>
+              <span class="small fw-bold <%= d.storage.systemUsedPercent >= 90 ? 'text-danger' : (d.storage.systemUsedPercent >= 80 ? 'text-warning' : 'text-success') %>">
+                Đã dùng <%= d.storage.systemUsedFormatted %> / <%= d.storage.systemTotalFormatted %> (<%= d.storage.systemUsedPercent %>%)
+              </span>
+            </div>
+            <div class="progress" style="height: 10px; border-radius: 6px;">
+              <div class="progress-bar <%= d.storage.systemUsedPercent >= 90 ? 'bg-danger' : (d.storage.systemUsedPercent >= 80 ? 'bg-warning' : 'bg-success') %>" 
+                   role="progressbar" 
+                   style="width: <%= d.storage.systemUsedPercent %>%;" 
+                   aria-valuenow="<%= d.storage.systemUsedPercent %>" 
+                   aria-valuemin="0" 
+                   aria-valuemax="100">
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 text-muted" style="font-size: 0.78rem;">
+              <span>Trống khả dụng: <strong><%= d.storage.systemAvailableFormatted %></strong></span>
+              <span>Cập nhật qua PUSH: <%= d.storage.updatedAtMs ? new Date(d.storage.updatedAtMs).toLocaleString('vi-VN') : 'Gần đây' %></span>
+            </div>
+          </div>
+
+          <!-- Phân bổ dữ liệu chi tiết của App POS -->
+          <h6 class="fw-bold text-dark mb-3 small text-uppercase" style="letter-spacing: 0.5px;">
+            <i class="bi bi-pie-chart-fill text-info me-1"></i> Chi tiết phân bổ dữ liệu trên máy POS
+          </h6>
+          <div class="row g-3 mb-4">
+            <!-- SQLite DB -->
+            <div class="col-md-4">
+              <div class="p-3 bg-white rounded-3 border shadow-none h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                    <i class="bi bi-database me-1"></i>Cơ sở dữ liệu
+                  </span>
+                  <strong class="fs-6 text-dark"><%= d.storage.dbSizeFormatted %></strong>
+                </div>
+                <div class="text-dark fw-semibold small mb-1">SQLite Database (`pos.db`)</div>
+                <div class="text-muted small" style="font-size: 0.8rem;">
+                  Lưu trữ các đơn hàng, phiên ca thu ngân, danh mục món ăn & chi tiết giao dịch (gồm cả WAL & SHM).
+                </div>
+              </div>
+            </div>
+
+            <!-- Cache & Temp -->
+            <div class="col-md-4">
+              <div class="p-3 bg-white rounded-3 border shadow-none h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                    <i class="bi bi-folder me-1"></i>Bộ nhớ đệm
+                  </span>
+                  <strong class="fs-6 text-dark"><%= d.storage.cacheSizeFormatted %></strong>
+                </div>
+                <div class="text-dark fw-semibold small mb-1">Cache & Dữ liệu tạm</div>
+                <div class="text-muted small" style="font-size: 0.8rem;">
+                  Bộ nhớ tạm thời sinh ra trong quá trình in hóa đơn, in tem và đồng bộ mạng. Có thể xóa an toàn khi cần.
+                </div>
+              </div>
+            </div>
+
+            <!-- Tổng data App -->
+            <div class="col-md-4">
+              <div class="p-3 bg-white rounded-3 border shadow-none h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                    <i class="bi bi-box me-1"></i>Tổng dung lượng App
+                  </span>
+                  <strong class="fs-6 text-dark"><%= d.storage.totalAppFormatted %></strong>
+                </div>
+                <div class="text-dark fw-semibold small mb-1">Dung lượng App nội bộ</div>
+                <div class="text-muted small" style="font-size: 0.8rem;">
+                  Tổng dung lượng thư mục ứng dụng Android (DataDir) bao gồm DB, Cache, Shared Preferences và cấu hình.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thống kê số lượng bản ghi nghiệp vụ -->
+          <h6 class="fw-bold text-dark mb-3 small text-uppercase" style="letter-spacing: 0.5px;">
+            <i class="bi bi-receipt-cutoff text-success me-1"></i> Thống kê dữ liệu nghiệp vụ đang lưu trên POS
+          </h6>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <div class="d-flex align-items-center p-3 bg-light rounded-3 border">
+                <div class="p-2.5 bg-white text-primary rounded-3 border me-3 fs-5">
+                  <i class="bi bi-receipt"></i>
+                </div>
+                <div>
+                  <div class="text-muted small">Tổng số đơn hàng trên POS</div>
+                  <div class="fs-5 fw-bold text-dark"><%= d.storage.orderCount.toLocaleString('vi-VN') %> <span class="fs-6 fw-normal text-muted">đơn</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="d-flex align-items-center p-3 bg-light rounded-3 border">
+                <div class="p-2.5 bg-white text-info rounded-3 border me-3 fs-5">
+                  <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                  <div class="text-muted small">Tổng số ca làm việc trên POS</div>
+                  <div class="fs-5 fw-bold text-dark"><%= d.storage.shiftCount.toLocaleString('vi-VN') %> <span class="fs-6 fw-normal text-muted">ca</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="d-flex align-items-center p-3 bg-light rounded-3 border">
+                <div class="p-2.5 bg-white text-warning rounded-3 border me-3 fs-5">
+                  <i class="bi bi-cup-hot"></i>
+                </div>
+                <div>
+                  <div class="text-muted small">Sản phẩm món ăn trong POS</div>
+                  <div class="fs-5 fw-bold text-dark"><%= d.storage.productCount.toLocaleString('vi-VN') %> <span class="fs-6 fw-normal text-muted">món</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Khuyến nghị tối ưu & backup -->
+          <div class="p-3 rounded-3 border <%= d.storage.statusLevel === 'DANGER' ? 'bg-danger-subtle border-danger-subtle' : (d.storage.statusLevel === 'WARNING' ? 'bg-warning-subtle border-warning-subtle' : 'bg-light') %>">
+            <div class="d-flex gap-2">
+              <i class="bi <%= d.storage.statusLevel === 'DANGER' ? 'bi-exclamation-octagon-fill text-danger fs-5' : (d.storage.statusLevel === 'WARNING' ? 'bi-exclamation-triangle-fill text-warning fs-5' : 'bi-lightbulb-fill text-primary fs-5') %>"></i>
+              <div class="small">
+                <div class="fw-bold mb-1 text-dark">
+                  <% if (d.storage.statusLevel === 'DANGER') { %>
+                    Khuyến nghị khẩn cấp: Bộ nhớ thiết bị gần đầy (≥90%)!
+                  <% } else if (d.storage.statusLevel === 'WARNING') { %>
+                    Khuyến nghị: Bộ nhớ thiết bị bắt đầu cao (80% - 90%)
+                  <% } else { %>
+                    Trạng thái tối ưu & Hướng dẫn sao lưu định kỳ
+                  <% } %>
+                </div>
+                <div class="text-secondary">
+                  <% if (d.storage.statusLevel === 'DANGER') { %>
+                    Bộ nhớ thiết bị POS đã dùng <%= d.storage.systemUsedPercent %>%. Nguy cơ gây lỗi tràn bộ nhớ khi lưu đơn mới hoặc in hóa đơn.
+                    <strong>Hành động:</strong> Vào máy POS mục <em>Cài đặt &gt; Thông tin bộ nhớ &gt; Dọn dẹp cache</em> và xuất file Backup dữ liệu.
+                  <% } else if (d.storage.statusLevel === 'WARNING') { %>
+                    Dung lượng khả dụng còn <%= d.storage.systemAvailableFormatted %>. Khuyến nghị nên sao lưu dữ liệu và xóa bớt file tạm để máy hoạt động mượt mà.
+                  <% } else { %>
+                    Bộ nhớ máy POS đang rất ổn định (đã dùng <%= d.storage.systemUsedPercent %>%, còn trống <%= d.storage.systemAvailableFormatted %>). 
+                    Toàn bộ <%= d.storage.orderCount %> đơn hàng và <%= d.storage.shiftCount %> ca làm việc trên máy POS đã và đang được đẩy tự động lên Cloud admin này. 
+                    Khi cần xuất sao lưu từ POS, bạn có thể vào menu cài đặt trên máy POS để tạo bản sao lưu `.json` lưu vào thẻ nhớ/USB.
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        <% } else { %>
+          <!-- Chưa nhận được telemetry -->
+          <div class="p-4 text-center bg-light rounded-3 border">
+            <i class="bi bi-cloud-arrow-up display-6 text-muted mb-2"></i>
+            <h6 class="text-dark fw-semibold mb-1">Chờ nhận dữ liệu bộ nhớ từ máy POS</h6>
+            <p class="text-muted small mb-0">
+              Thông tin chi tiết về dung lượng SQLite, bộ nhớ đệm và sức khỏe thiết bị sẽ tự động được gửi lên server trong lần PUSH kế tiếp
+              (khi có giao dịch mới hoặc theo lịch tự động 9:00, 10:00, 15:00, 17:00, 18:00, 21:00, 22:00).
+            </p>
+          </div>
+        <% } %>
+      </div>
+    </div>
   </div>
+  <% }) %>
 </div>
 
 <%- include('partials/footer') %>

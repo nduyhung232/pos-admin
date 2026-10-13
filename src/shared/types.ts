@@ -171,6 +171,21 @@ export interface ShiftPush {
 
 // ---- Sync envelopes ---------------------------------------------------------
 
+export interface DeviceStorageTelemetry {
+  dbSizeBytes: number;
+  cacheSizeBytes: number;
+  totalAppBytes: number;
+  systemTotalBytes: number;
+  systemAvailableBytes: number;
+  systemUsedBytes: number;
+  systemUsedPercent: number;
+  orderCount: number;
+  productCount: number;
+  shiftCount: number;
+  statusLevel?: 'SAFE' | 'WARNING' | 'DANGER';
+  updatedAtMs?: number;
+}
+
 /**
  * POS -> server. Everything the terminal recorded while it owned the data.
  * The terminal is identified by its bearer token alone (no deviceId field).
@@ -180,6 +195,7 @@ export interface SyncPushRequest {
   clientTimeMs: number;
   orders: OrderPush[];
   shifts: ShiftPush[];
+  storage?: DeviceStorageTelemetry;
 }
 
 export interface SyncRejection {

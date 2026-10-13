@@ -82,11 +82,27 @@ const shiftSchema = z.object({
   closedByStaffSyncId: z.string().uuid().nullable(),
 });
 
+const storageReportSchema = z.object({
+  dbSizeBytes: z.number().int().nonnegative(),
+  cacheSizeBytes: z.number().int().nonnegative(),
+  totalAppBytes: z.number().int().nonnegative(),
+  systemTotalBytes: z.number().int().nonnegative(),
+  systemAvailableBytes: z.number().int().nonnegative(),
+  systemUsedBytes: z.number().int().nonnegative(),
+  systemUsedPercent: z.number().int().min(0).max(100),
+  orderCount: z.number().int().nonnegative(),
+  productCount: z.number().int().nonnegative(),
+  shiftCount: z.number().int().nonnegative(),
+  statusLevel: z.enum(['SAFE', 'WARNING', 'DANGER']).optional(),
+  updatedAtMs: z.number().int().positive().optional(),
+});
+
 /** Batch caps keep one push bounded; the terminal pages larger backlogs. */
 const pushSchema = z.object({
   clientTimeMs: z.number().int().positive(),
   orders: z.array(orderSchema).max(500),
   shifts: z.array(shiftSchema).max(100),
+  storage: storageReportSchema.optional(),
 });
 
 export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
@@ -276,7 +292,17 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
 
     await prisma.device.update({
       where: { id: device.id },
-      data: { lastSeenAtMs: BigInt(nowMs) },
+      data: {
+        lastSeenAtMs: BigInt(nowMs),
+        ...(body.storage
+          ? {
+              storageInfo: JSON.stringify({
+                ...body.storage,
+                updatedAtMs: body.storage.updatedAtMs ?? nowMs,
+              }),
+            }
+          : {}),
+      },
     });
 
     const response: SyncPushResponse = {

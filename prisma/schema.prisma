@@ -47,6 +47,9 @@ model Device {
   /// Cursor of the last successful pull, so pulls can be incremental.
   pullCursorMs BigInt @default(0)
 
+  /// Storage telemetry pushed from POS terminal (JSON format)
+  storageInfo   String?
+
   orders        Order[]
   shifts        Shift[]
   assignedCodes DiscountCode[]
@@ -268,18 +271,4 @@ model OrderItem {
   @@index([productId])
 }
 
-/// Append-only audit log for actions taken in the web admin.
-model AuditLog {
-  id         Int    @id @default(autoincrement())
-  atMs       BigInt
-  /// syncId of the staff member who acted, or "system".
-  actor      String
-  action     String
-  entityType String
-  entityId   String
-  /// JSON detail. Must never contain PIN material.
-  detail     String?
 
-  @@index([atMs])
-  @@index([entityType, entityId])
-}

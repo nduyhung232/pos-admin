@@ -8,7 +8,6 @@
  *
  * WHAT IS PRESERVED (deliberately, financial-grade)
  *  - MANAGER-only access, enforced per route (fail closed) via requireManager.
- *  - Every mutation writes an AuditLog row (who changed a price / PIN / code).
  *  - PINs hashed with PBKDF2 (createPin); device tokens hashed with SHA-256.
  *  - All money is Int VND; division goes through the shared Money rule.
  *  - "last active manager" cannot be demoted/deactivated.
@@ -42,26 +41,7 @@ function generateCode(): string {
 /** Thrown inside a staff transaction to roll back when no active manager remains. */
 class LastManagerError extends Error {}
 
-async function audit(
-  prisma: PrismaClient,
-  actor: string,
-  action: string,
-  entityType: string,
-  entityId: string,
-  detail?: unknown,
-): Promise<void> {
-  await prisma.auditLog.create({
-    data: {
-      atMs: BigInt(Date.now()),
-      actor,
-      action,
-      entityType,
-      entityId,
-      // Detail must never contain PIN material — callers pass shapes only.
-      detail: detail === undefined ? null : JSON.stringify(detail),
-    },
-  });
-}
+
 
 /** Start-of-day / end-of-day helpers for the report date inputs (Vietnam time UTC+7). */
 function vnDateStr(d: Date = new Date()): string {
@@ -173,7 +153,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         req.log?.error?.(err, 'session regenerate failed');
       }
       setSessionStaff(req, staff.syncId);
-      await audit(prisma, staff.syncId, 'login', 'staff', staff.syncId);
       res.redirect('/reports');
     });
   });
@@ -729,10 +708,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       select: { syncId: true, name: true, price: true },
     });
 
-    await audit(prisma, session.staffSyncId, 'create', 'product', product.syncId, {
-      name: product.name,
-      price: product.price,
-    });
     res.redirect('/products?notice=created');
   });
 
@@ -789,14 +764,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       }),
     );
 
-    for (const c of changes) {
-      const prev = before.get(c.syncId)!;
-      await audit(prisma, session.staffSyncId, 'update', 'product', c.syncId, {
-        before: { name: prev.name, price: prev.price, category: prev.category, active: prev.active },
-        after: c,
-      });
-    }
-
     res.json({ ok: true, updated: changes.length });
   });
 
@@ -825,10 +792,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
           set: parsed.data.toppingSyncIds.map((id) => ({ syncId: id })),
         },
       },
-    });
-
-    await audit(prisma, session.staffSyncId, 'update', 'product_toppings', product.syncId, {
-      toppingSyncIds: parsed.data.toppingSyncIds,
     });
 
     res.json({ ok: true });
@@ -877,10 +840,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       select: { syncId: true, name: true, price: true },
     });
 
-    await audit(prisma, session.staffSyncId, 'create', 'topping', topping.syncId, {
-      name: topping.name,
-      price: topping.price,
-    });
     res.redirect('/toppings?notice=created');
   });
 
@@ -928,14 +887,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         return prisma.topping.update({ where: { syncId }, data });
       }),
     );
-
-    for (const c of changes) {
-      const prev = before.get(c.syncId)!;
-      await audit(prisma, session.staffSyncId, 'update', 'topping', c.syncId, {
-        before: { name: prev.name, price: prev.price, active: prev.active },
-        after: c,
-      });
-    }
 
     res.json({ ok: true, updated: changes.length });
   });
@@ -989,11 +940,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       select: { syncId: true, name: true, role: true },
     });
 
-    // Audit records the event, never the PIN or its hash.
-    await audit(prisma, session.staffSyncId, 'create', 'staff', staff.syncId, {
-      name: staff.name,
-      role: staff.role,
-    });
     res.redirect('/staff?notice=created');
   });
 
@@ -1079,20 +1025,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         return res.status(409).json({ ok: false, error: 'last_manager' });
       }
       throw e;
-    }
-
-    // Audit after commit. PIN material is never included in the detail.
-    for (const c of changes) {
-      const prev = before.get(c.syncId)!;
-      if (c.name !== undefined || c.role !== undefined || c.active !== undefined) {
-        await audit(prisma, session.staffSyncId, 'update', 'staff', c.syncId, {
-          before: { name: prev.name, role: prev.role, active: prev.active },
-          after: { name: c.name, role: c.role, active: c.active },
-        });
-      }
-      if (c.pin !== undefined) {
-        await audit(prisma, session.staffSyncId, 'reset_pin', 'staff', c.syncId);
-      }
     }
 
     res.json({ ok: true, updated: changes.length });
@@ -1186,13 +1118,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       return created;
     });
 
-    await audit(prisma, session.staffSyncId, 'create', 'campaign', campaign.syncId, {
-      name: campaign.name,
-      valueType: parsed.data.valueType,
-      value: parsed.data.value,
-      count: parsed.data.count,
-      assignedTo: device.name,
-    });
     res.redirect('/campaigns');
   });
 
@@ -1380,21 +1305,56 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     const session = await requireManager(req, res, prisma, 'redirect');
     if (!session) return;
 
+    function formatBytes(bytes: number): string {
+      if (!bytes || bytes <= 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      const val = bytes / Math.pow(1024, i);
+      return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
     // tokenHash is never selected.
     const devices = await prisma.device.findMany({
       orderBy: { createdAtMs: 'desc' },
-      select: { id: true, name: true, active: true, lastSeenAtMs: true, createdAtMs: true },
+      select: { id: true, name: true, active: true, lastSeenAtMs: true, createdAtMs: true, storageInfo: true },
+    });
+
+    const parsedDevices = devices.map((d) => {
+      let storage = null;
+      if (d.storageInfo) {
+        try {
+          const raw = JSON.parse(d.storageInfo);
+          storage = {
+            dbSizeFormatted: formatBytes(raw.dbSizeBytes ?? 0),
+            cacheSizeFormatted: formatBytes(raw.cacheSizeBytes ?? 0),
+            totalAppFormatted: formatBytes(raw.totalAppBytes ?? 0),
+            systemTotalFormatted: formatBytes(raw.systemTotalBytes ?? 0),
+            systemAvailableFormatted: formatBytes(raw.systemAvailableBytes ?? 0),
+            systemUsedFormatted: formatBytes(raw.systemUsedBytes ?? 0),
+            systemUsedPercent: Math.min(100, Math.max(0, raw.systemUsedPercent ?? 0)),
+            orderCount: Number(raw.orderCount ?? 0),
+            productCount: Number(raw.productCount ?? 0),
+            shiftCount: Number(raw.shiftCount ?? 0),
+            statusLevel: raw.statusLevel ?? (raw.systemUsedPercent >= 90 ? 'DANGER' : raw.systemUsedPercent >= 80 ? 'WARNING' : 'SAFE'),
+            updatedAtMs: raw.updatedAtMs ? Number(raw.updatedAtMs) : (d.lastSeenAtMs ? Number(d.lastSeenAtMs) : null),
+          };
+        } catch {
+          storage = null;
+        }
+      }
+      return {
+        ...d,
+        lastSeenAtMs: d.lastSeenAtMs === null ? null : Number(d.lastSeenAtMs),
+        createdAtMs: Number(d.createdAtMs),
+        storage,
+      };
     });
 
     res.render('devices', {
       active: 'devices',
       session,
       minTokenLength: MIN_TOKEN_LENGTH,
-      devices: devices.map((d) => ({
-        ...d,
-        lastSeenAtMs: d.lastSeenAtMs === null ? null : Number(d.lastSeenAtMs),
-        createdAtMs: Number(d.createdAtMs),
-      })),
+      devices: parsedDevices,
       error: (req.query.error as string) ?? null,
       created: (req.query.created as string) ?? null,
     });
@@ -1428,7 +1388,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     });
     if (clash) return res.redirect('/devices?error=token_taken');
 
-    const device = await prisma.device.create({
+    await prisma.device.create({
       data: {
         name: parsed.data.name.trim(),
         tokenHash,
@@ -1438,25 +1398,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       select: { id: true, name: true },
     });
 
-    // Audit records the event and the device — never the token or its hash.
-    await audit(prisma, session.staffSyncId, 'create', 'device', String(device.id), {
-      name: device.name,
-    });
-
     res.redirect('/devices?created=1');
-  });
-
-  // ---- Audit log ----------------------------------------------------------
-
-  app.get('/audit', async (req: Request, res: Response) => {
-    const session = await requireManager(req, res, prisma, 'redirect');
-    if (!session) return;
-
-    const logs = await prisma.auditLog.findMany({ orderBy: { atMs: 'desc' }, take: 200 });
-    res.render('audit', {
-      active: 'audit',
-      session,
-      logs: logs.map((l) => ({ ...l, atMs: Number(l.atMs) })),
-    });
   });
 }
