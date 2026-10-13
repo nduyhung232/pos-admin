@@ -1299,19 +1299,19 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     });
   });
 
+  function formatBytes(bytes: number): string {
+    if (!bytes || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const val = bytes / Math.pow(1024, i);
+    return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
   // ---- Devices ------------------------------------------------------------
 
   app.get('/devices', async (req: Request, res: Response) => {
     const session = await requireManager(req, res, prisma, 'redirect');
     if (!session) return;
-
-    function formatBytes(bytes: number): string {
-      if (!bytes || bytes <= 0) return '0 B';
-      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(1024));
-      const val = bytes / Math.pow(1024, i);
-      return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-    }
 
     // tokenHash is never selected.
     const devices = await prisma.device.findMany({
@@ -1399,5 +1399,95 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     });
 
     res.redirect('/devices?created=1');
+  });
+
+  // ---- POS Data & Storage Analytics ----------------------------------------
+
+  app.get('/pos-data', async (req: Request, res: Response) => {
+    const session = await requireManager(req, res, prisma, 'redirect');
+    if (!session) return;
+
+    const devices = await prisma.device.findMany({
+      orderBy: { createdAtMs: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        active: true,
+        lastSeenAtMs: true,
+        createdAtMs: true,
+        storageInfo: true,
+        _count: {
+          select: {
+            orders: true,
+            shifts: true,
+          },
+        },
+      },
+    });
+
+    const parsedDevices = devices.map((d) => {
+      let storage = null;
+      if (d.storageInfo) {
+        try {
+          const raw = JSON.parse(d.storageInfo);
+          const dbSizeBytes = Number(raw.dbSizeBytes ?? 0);
+          const cacheSizeBytes = Number(raw.cacheSizeBytes ?? 0);
+          const totalAppBytes = Number(raw.totalAppBytes ?? 0);
+          const systemTotalBytes = Number(raw.systemTotalBytes ?? 0);
+          const systemAvailableBytes = Number(raw.systemAvailableBytes ?? 0);
+          const systemUsedBytes = Number(raw.systemUsedBytes ?? 0);
+          const systemUsedPercent = Math.min(100, Math.max(0, Number(raw.systemUsedPercent ?? 0)));
+          const otherAppBytes = Math.max(0, totalAppBytes - (dbSizeBytes + cacheSizeBytes));
+
+          storage = {
+            dbSizeBytes,
+            cacheSizeBytes,
+            totalAppBytes,
+            otherAppBytes,
+            systemTotalBytes,
+            systemAvailableBytes,
+            systemUsedBytes,
+            systemUsedPercent,
+            dbSizeFormatted: formatBytes(dbSizeBytes),
+            cacheSizeFormatted: formatBytes(cacheSizeBytes),
+            totalAppFormatted: formatBytes(totalAppBytes),
+            otherAppFormatted: formatBytes(otherAppBytes),
+            systemTotalFormatted: formatBytes(systemTotalBytes),
+            systemAvailableFormatted: formatBytes(systemAvailableBytes),
+            systemUsedFormatted: formatBytes(systemUsedBytes),
+            orderCount: Number(raw.orderCount ?? 0),
+            productCount: Number(raw.productCount ?? 0),
+            shiftCount: Number(raw.shiftCount ?? 0),
+            statusLevel: raw.statusLevel ?? (systemUsedPercent >= 90 ? 'DANGER' : systemUsedPercent >= 80 ? 'WARNING' : 'SAFE'),
+            updatedAtMs: raw.updatedAtMs ? Number(raw.updatedAtMs) : (d.lastSeenAtMs ? Number(d.lastSeenAtMs) : null),
+          };
+        } catch {
+          storage = null;
+        }
+      }
+      return {
+        id: d.id,
+        name: d.name,
+        active: d.active,
+        lastSeenAtMs: d.lastSeenAtMs === null ? null : Number(d.lastSeenAtMs),
+        createdAtMs: Number(d.createdAtMs),
+        serverOrderCount: d._count.orders,
+        serverShiftCount: d._count.shifts,
+        storage,
+      };
+    });
+
+    const selectedDeviceId = req.query.deviceId ? Number(req.query.deviceId) : null;
+    const selectedDevice = (selectedDeviceId ? parsedDevices.find((d) => d.id === selectedDeviceId) : null)
+      || parsedDevices.find((d) => d.storage !== null)
+      || parsedDevices[0]
+      || null;
+
+    res.render('pos-data', {
+      active: 'pos-data',
+      session,
+      devices: parsedDevices,
+      selectedDevice,
+    });
   });
 }

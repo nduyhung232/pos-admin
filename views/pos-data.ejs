@@ -1,0 +1,503 @@
+<%- include('partials/header') %>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- HEADER & DEVICE SELECTOR -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h4 class="mb-1 fw-bold text-dark">
+      <i class="bi bi-pie-chart-fill text-primary me-2"></i>Giám sát & Phân tích Dữ liệu Máy POS
+    </h4>
+    <p class="text-muted small mb-0">
+      Theo dõi chi tiết các loại dữ liệu SQLite, Cache, dung lượng ổ cứng thiết bị và thống kê bản ghi nghiệp vụ
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="/devices" class="btn btn-outline-secondary btn-sm fw-semibold">
+      <i class="bi bi-gear-fill me-1"></i> Quản lý thiết bị POS
+    </a>
+  </div>
+</div>
+
+<!-- DEVICE TABS SELECTOR -->
+<% if (devices && devices.length > 0) { %>
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+  <div class="card-body p-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small fw-semibold text-uppercase me-1"><i class="bi bi-tablet me-1"></i>Chọn máy POS:</span>
+        <div class="btn-group flex-wrap" role="group">
+          <% devices.forEach(function(d) { %>
+            <a href="/pos-data?deviceId=<%= d.id %>" 
+               class="btn btn-sm <%= (selectedDevice && selectedDevice.id === d.id) ? 'btn-primary shadow-sm' : 'btn-outline-secondary' %> fw-semibold d-flex align-items-center gap-2 px-3">
+              <span><%= d.name %></span>
+              <% if (d.storage) { %>
+                <% if (d.storage.statusLevel === 'DANGER') { %>
+                  <span class="badge bg-danger rounded-pill">Đầy</span>
+                <% } else if (d.storage.statusLevel === 'WARNING') { %>
+                  <span class="badge bg-warning text-dark rounded-pill">Cảnh báo</span>
+                <% } else { %>
+                  <span class="badge bg-success rounded-pill">Tốt</span>
+                <% } %>
+              <% } else { %>
+                <span class="badge bg-light text-muted rounded-pill">Chờ data</span>
+              <% } %>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+      <% if (selectedDevice) { %>
+      <div class="d-flex align-items-center gap-2 small text-muted">
+        <span><i class="bi bi-clock-history me-1"></i>Sync gần nhất: <strong><%= selectedDevice.lastSeenAtMs ? new Date(selectedDevice.lastSeenAtMs).toLocaleString('vi-VN') : 'Chưa từng' %></strong></span>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<% if (!selectedDevice || !selectedDevice.storage) { %>
+<!-- CHƯA CÓ DỮ LIỆU TELEMETRY -->
+<div class="card border-0 shadow-sm text-center py-5 my-4" style="border-radius: 16px;">
+  <div class="card-body">
+    <div class="display-3 text-primary opacity-50 mb-3"><i class="bi bi-cloud-arrow-up"></i></div>
+    <h5 class="fw-bold text-dark mb-2">Đang chờ nhận dữ liệu Telemetry từ máy POS</h5>
+    <p class="text-muted max-w-lg mx-auto mb-4" style="max-width: 580px;">
+      Máy POS sẽ tự động đẩy thông tin dung lượng ổ cứng, database SQLite và thống kê đơn hàng về server trong mỗi lần <strong>PUSH</strong>
+      (khi thu ngân bấm thanh toán đơn hàng, hoặc theo lịch tự động <strong>9:00, 10:00, 15:00, 17:00, 18:00, 21:00, 22:00</strong>).
+    </p>
+    <div>
+      <a href="/devices" class="btn btn-primary fw-semibold px-4 py-2">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại Danh sách máy POS
+      </a>
+    </div>
+  </div>
+</div>
+<% } else { %>
+<% const st = selectedDevice.storage; %>
+
+<!-- HERO TOP KPI CARDS -->
+<div class="row g-3 mb-4">
+  <!-- KPI 1: DUNG LƯỢNG MÁY POS -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);">
+      <div class="card-body p-3.5">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-muted small fw-bold text-uppercase"><i class="bi bi-device-hdd text-primary me-1"></i>Ổ cứng máy POS</span>
+          <span class="badge <%= st.statusLevel === 'DANGER' ? 'bg-danger' : (st.statusLevel === 'WARNING' ? 'bg-warning text-dark' : 'bg-success') %>">
+            <%= st.systemUsedPercent %>% đã dùng
+          </span>
+        </div>
+        <div class="fs-4 fw-bolder text-dark mb-1"><%= st.systemUsedFormatted %> <span class="fs-6 fw-normal text-muted">/ <%= st.systemTotalFormatted %></span></div>
+        <div class="progress mb-2" style="height: 6px; border-radius: 4px;">
+          <div class="progress-bar <%= st.statusLevel === 'DANGER' ? 'bg-danger' : (st.statusLevel === 'WARNING' ? 'bg-warning' : 'bg-success') %>" 
+               style="width: <%= st.systemUsedPercent %>%;"></div>
+        </div>
+        <div class="small text-muted" style="font-size: 0.8rem;">
+          Còn trống khả dụng: <strong class="text-dark"><%= st.systemAvailableFormatted %></strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 2: SQLITE DB -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);">
+      <div class="card-body p-3.5">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-muted small fw-bold text-uppercase"><i class="bi bi-database text-success me-1"></i>Database SQLite</span>
+          <span class="badge bg-success-subtle text-success border border-success-subtle">pos.db</span>
+        </div>
+        <div class="fs-4 fw-bolder text-dark mb-1"><%= st.dbSizeFormatted %></div>
+        <div class="text-muted small" style="font-size: 0.8rem;">
+          Bao gồm file chính + WAL + SHM lưu toàn bộ dữ liệu offline.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 3: CACHE & TEMP -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #fefce8 0%, #ffffff 100%);">
+      <div class="card-body p-3.5">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-muted small fw-bold text-uppercase"><i class="bi bi-folder2-open text-warning-emphasis me-1"></i>Bộ nhớ Cache</span>
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Tạm thời</span>
+        </div>
+        <div class="fs-4 fw-bolder text-dark mb-1"><%= st.cacheSizeFormatted %></div>
+        <div class="text-muted small" style="font-size: 0.8rem;">
+          File tạm phát sinh khi in ấn & cache code. Có thể xóa an toàn.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 4: ĐƠN HÀNG VÀ ĐỒNG BỘ -->
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);">
+      <div class="card-body p-3.5">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-muted small fw-bold text-uppercase"><i class="bi bi-receipt-cutoff text-purple me-1"></i>Đơn hàng POS</span>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+            <%= (st.orderCount > 0 && selectedDevice.serverOrderCount >= st.orderCount) ? '100% đã sync' : 'Đang đồng bộ' %>
+          </span>
+        </div>
+        <div class="fs-4 fw-bolder text-dark mb-1">
+          <%= st.orderCount.toLocaleString('vi-VN') %> <span class="fs-6 fw-normal text-muted">đơn</span>
+        </div>
+        <div class="text-muted small" style="font-size: 0.8rem;">
+          Đã lưu trên Server: <strong class="text-dark"><%= selectedDevice.serverOrderCount.toLocaleString('vi-VN') %> đơn</strong> (<%= st.shiftCount %> ca)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHARTS SECTION: 3 BIỂU ĐỒ TRỰC QUAN -->
+<div class="row g-4 mb-4">
+  <!-- CHART 1: DUNG LƯỢNG Ổ CỨNG THIẾT BỊ -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 14px;">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-pie-chart text-primary me-2"></i>Dung lượng Ổ cứng POS</h6>
+        <span class="badge bg-light text-dark border"><%= st.systemUsedPercent %>% đầy</span>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+        <div style="position: relative; width: 220px; height: 220px;">
+          <canvas id="diskUsageChart"></canvas>
+          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+            <div class="fs-3 fw-bold <%= st.systemUsedPercent >= 90 ? 'text-danger' : (st.systemUsedPercent >= 80 ? 'text-warning' : 'text-success') %>">
+              <%= st.systemUsedPercent %>%
+            </div>
+            <div class="text-muted" style="font-size: 0.72rem;">Đã sử dụng</div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-around w-100 mt-3 pt-2 border-top text-center">
+          <div>
+            <div class="small text-muted">Đã dùng</div>
+            <div class="fw-bold text-dark"><%= st.systemUsedFormatted %></div>
+          </div>
+          <div>
+            <div class="small text-muted">Còn trống</div>
+            <div class="fw-bold text-success"><%= st.systemAvailableFormatted %></div>
+          </div>
+          <div>
+            <div class="small text-muted">Tổng ổ cứng</div>
+            <div class="fw-bold text-secondary"><%= st.systemTotalFormatted %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART 2: PHÂN BỔ DỮ LIỆU NỘI BỘ APP POS -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 14px;">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-diagram-3-fill text-success me-2"></i>Cơ cấu Dữ liệu App POS</h6>
+        <span class="badge bg-success-subtle text-success border border-success-subtle">Tổng: <%= st.totalAppFormatted %></span>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+        <div style="position: relative; width: 220px; height: 220px;">
+          <canvas id="appDataChart"></canvas>
+        </div>
+        <div class="d-flex justify-content-around w-100 mt-3 pt-2 border-top text-center" style="font-size: 0.8rem;">
+          <div>
+            <span class="d-inline-block rounded-circle bg-success me-1" style="width: 8px; height: 8px;"></span>
+            <span class="text-muted">SQLite DB</span>
+            <div class="fw-bold text-dark"><%= st.dbSizeFormatted %></div>
+          </div>
+          <div>
+            <span class="d-inline-block rounded-circle bg-warning me-1" style="width: 8px; height: 8px;"></span>
+            <span class="text-muted">Cache/Temp</span>
+            <div class="fw-bold text-dark"><%= st.cacheSizeFormatted %></div>
+          </div>
+          <div>
+            <span class="d-inline-block rounded-circle bg-info me-1" style="width: 8px; height: 8px;"></span>
+            <span class="text-muted">File khác</span>
+            <div class="fw-bold text-dark"><%= st.otherAppFormatted %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART 3: THỐNG KÊ BẢN GHI NGHIỆP VỤ -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 14px;">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-bar-chart-fill text-info me-2"></i>Bản ghi Dữ liệu trên POS</h6>
+        <span class="badge bg-light text-dark border">3 loại dữ liệu</span>
+      </div>
+      <div class="card-body d-flex flex-column justify-content-center p-4">
+        <div style="height: 220px;">
+          <canvas id="recordCountChart"></canvas>
+        </div>
+        <div class="mt-3 pt-2 border-top small text-muted text-center">
+          <i class="bi bi-check2-circle text-success me-1"></i>Dữ liệu đơn & ca được bảo toàn trong Room SQLite và đồng bộ lên Cloud.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TECHNICAL BREAKDOWN TABLE & OPTIMIZATION / BACKUP ADVISORY -->
+<div class="row g-4 mb-4">
+  <!-- BẢNG PHÂN BỔ CHI TIẾT TỪNG THÀNH PHẦN -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 14px;">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-table text-primary me-2"></i>Bảng phân bổ chi tiết các thành phần dữ liệu</h6>
+      </div>
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Thành phần</th>
+              <th>Loại dữ liệu</th>
+              <th class="text-end">Dung lượng</th>
+              <th class="text-center">Đặc tính</th>
+              <th>Tác vụ khuyến nghị</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="fw-bold text-dark">pos.db</div>
+                <div class="small text-muted" style="font-size: 0.75rem;">SQLite Core</div>
+              </td>
+              <td>Đơn hàng, ca, sản phẩm, mã giảm</td>
+              <td class="text-end fw-bold text-success"><%= st.dbSizeFormatted %></td>
+              <td class="text-center">
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Cốt lõi - Không xóa</span>
+              </td>
+              <td><small class="text-muted">Sao lưu định kỳ ra USB qua máy POS</small></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="fw-bold text-dark">pos.db-wal & shm</div>
+                <div class="small text-muted" style="font-size: 0.75rem;">Write-Ahead Log</div>
+              </td>
+              <td>Nhật ký giao dịch ghi nhanh</td>
+              <td class="text-end fw-semibold text-secondary">Nằm trong DB</td>
+              <td class="text-center">
+                <span class="badge bg-secondary-subtle text-secondary">Tự động checkpoint</span>
+              </td>
+              <td><small class="text-muted">Hệ thống tự dọn khi đóng ứng dụng</small></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="fw-bold text-dark">cacheDir</div>
+                <div class="small text-muted" style="font-size: 0.75rem;">Bộ nhớ đệm</div>
+              </td>
+              <td>File tạm bitmap in ấn, cache network</td>
+              <td class="text-end fw-bold text-warning-emphasis"><%= st.cacheSizeFormatted %></td>
+              <td class="text-center">
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Xóa an toàn</span>
+              </td>
+              <td>
+                <small class="text-primary fw-semibold">Bấm "Dọn dẹp cache" trên máy POS</small>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="fw-bold text-dark">dataDir Tổng</div>
+                <div class="small text-muted" style="font-size: 0.75rem;">App Directory</div>
+              </td>
+              <td>Toàn bộ tệp tin package Android</td>
+              <td class="text-end fw-bold text-primary"><%= st.totalAppFormatted %></td>
+              <td class="text-center">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Tổng gói app</span>
+              </td>
+              <td><small class="text-muted">Chiếm tỷ lệ rất nhỏ so với ổ cứng máy POS</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KHUYẾN NGHỊ THÔNG MINH & HƯỚNG DẪN TỐI ƯU / BACKUP -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100" style="border-radius: 14px;">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-shield-check text-success me-2"></i>Hướng dẫn Tối ưu & Sao lưu</h6>
+        <span class="badge <%= st.statusLevel === 'DANGER' ? 'bg-danger' : (st.statusLevel === 'WARNING' ? 'bg-warning text-dark' : 'bg-success') %>">
+          <%= st.statusLevel === 'DANGER' ? 'Nguy cơ đầy' : (st.statusLevel === 'WARNING' ? 'Cần chú ý' : 'An toàn') %>
+        </span>
+      </div>
+      <div class="card-body p-3.5">
+        <!-- Banner trạng thái -->
+        <div class="p-3 rounded-3 mb-3 <%= st.statusLevel === 'DANGER' ? 'bg-danger-subtle border border-danger-subtle' : (st.statusLevel === 'WARNING' ? 'bg-warning-subtle border border-warning-subtle' : 'bg-light border') %>">
+          <div class="d-flex align-items-start gap-2">
+            <i class="bi <%= st.statusLevel === 'DANGER' ? 'bi-exclamation-octagon-fill text-danger fs-5' : (st.statusLevel === 'WARNING' ? 'bi-exclamation-triangle-fill text-warning fs-5' : 'bi-check-circle-fill text-success fs-5') %>"></i>
+            <div>
+              <div class="fw-bold text-dark mb-1">
+                <% if (st.statusLevel === 'DANGER') { %>
+                  Cảnh báo: Ổ cứng máy POS đã đầy <%= st.systemUsedPercent %>%!
+                <% } else if (st.statusLevel === 'WARNING') { %>
+                  Lưu ý: Ổ cứng máy POS đã sử dụng <%= st.systemUsedPercent %>%
+                <% } else { %>
+                  Bộ nhớ thiết bị hoạt động rất ổn định (<%= st.systemUsedPercent %>% đã dùng)
+                <% } %>
+              </div>
+              <p class="small text-muted mb-0">
+                <% if (st.statusLevel === 'DANGER') { %>
+                  Cần giải phóng dung lượng ngay để tránh treo máy POS hoặc lỗi ghi đĩa khi thu ngân in đơn hàng.
+                <% } else { %>
+                  Thiết bị còn trống <strong><%= st.systemAvailableFormatted %></strong>. Dữ liệu bán hàng hoàn toàn an toàn và đã được PUSH đầy đủ về cơ sở dữ liệu Cloud.
+                <% } %>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hướng dẫn 2 hành động cụ thể -->
+        <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="bi bi-tools me-1 text-primary"></i> Thao tác trên máy POS:</h6>
+        
+        <div class="d-flex align-items-start gap-2 mb-3 p-2.5 rounded-2 bg-light">
+          <span class="badge bg-primary rounded-circle p-2" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;">1</span>
+          <div class="small">
+            <strong class="text-dark">Xuất sao lưu (Backup JSON):</strong>
+            <div class="text-muted">Cắm USB vào máy POS (hoặc dùng bộ nhớ máy), vào <em>Menu &gt; Cài đặt &gt; Thông tin bộ nhớ &gt; Xuất sao lưu</em>. File sao lưu chứa toàn bộ <%= st.orderCount %> đơn hàng và <%= st.shiftCount %> ca làm việc.</div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-start gap-2 p-2.5 rounded-2 bg-light">
+          <span class="badge bg-warning text-dark rounded-circle p-2" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;">2</span>
+          <div class="small">
+            <strong class="text-dark">Dọn dẹp bộ nhớ đệm (Cache):</strong>
+            <div class="text-muted">Khi dung lượng máy tăng, vào <em>Cài đặt &gt; Thông tin bộ nhớ &gt; Dọn dẹp cache</em> để xóa an toàn <%= st.cacheSizeFormatted %> file tạm mà không làm mất bất kỳ đơn hàng nào.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS KHỞI TẠO CHART.JS -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const st = <%- JSON.stringify(st) %>;
+
+    // 1. DOUGHNUT CHART - DUNG LƯỢNG Ổ CỨNG MÁY POS
+    const ctxDisk = document.getElementById('diskUsageChart')?.getContext('2d');
+    if (ctxDisk) {
+      new Chart(ctxDisk, {
+        type: 'doughnut',
+        data: {
+          labels: ['Đã dùng (' + st.systemUsedFormatted + ')', 'Còn trống (' + st.systemAvailableFormatted + ')'],
+          datasets: [{
+            data: [st.systemUsedBytes, st.systemAvailableBytes],
+            backgroundColor: [
+              st.systemUsedPercent >= 90 ? '#ef4444' : (st.systemUsedPercent >= 80 ? '#f59e0b' : '#3b82f6'),
+              '#e2e8f0'
+            ],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          cutout: '72%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ' ' + context.label;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. DOUGHNUT CHART - CƠ CẤU DỮ LIỆU APP POS
+    const ctxApp = document.getElementById('appDataChart')?.getContext('2d');
+    if (ctxApp) {
+      new Chart(ctxApp, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            'SQLite Database (' + st.dbSizeFormatted + ')',
+            'Cache & Temp (' + st.cacheSizeFormatted + ')',
+            'File hệ thống khác (' + st.otherAppFormatted + ')'
+          ],
+          datasets: [{
+            data: [st.dbSizeBytes, st.cacheSizeBytes, st.otherAppBytes],
+            backgroundColor: ['#10b981', '#f59e0b', '#06b6d4'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          cutout: '65%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ' ' + context.label;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 3. BAR CHART - THỐNG KÊ BẢN GHI DỮ LIỆU NGHIỆP VỤ
+    const ctxRecords = document.getElementById('recordCountChart')?.getContext('2d');
+    if (ctxRecords) {
+      new Chart(ctxRecords, {
+        type: 'bar',
+        data: {
+          labels: ['Đơn hàng', 'Ca làm việc', 'Sản phẩm menu'],
+          datasets: [{
+            label: 'Số lượng bản ghi trên POS',
+            data: [st.orderCount, st.shiftCount, st.productCount],
+            backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899'],
+            borderRadius: 6,
+            maxBarThickness: 38
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ' ' + context.parsed.y.toLocaleString('vi-VN') + ' bản ghi';
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0
+              },
+              grid: {
+                color: '#f1f5f9'
+              }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
+<% } %>
+
+<%- include('partials/footer') %>
