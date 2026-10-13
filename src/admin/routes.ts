@@ -1245,7 +1245,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       createdAtMs: { gte: BigInt(fromMs), lte: BigInt(toMs) },
     };
 
-    const [orders, total] = await Promise.all([
+    const [orders, total, paidSummary, dineInCount, takeAwayCount, cancelledCount] = await Promise.all([
       prisma.order.findMany({
         where,
         orderBy: { createdAtMs: 'desc' },
@@ -1267,14 +1267,25 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         },
       }),
       prisma.order.count({ where }),
+      prisma.order.aggregate({
+        where: { ...where, status: 'PAID' },
+        _sum: { total: true, discountAmount: true, subtotal: true },
+        _count: { syncId: true },
+      }),
+      prisma.order.count({
+        where: { ...where, status: 'PAID', orderType: 'DINE_IN' },
+      }),
+      prisma.order.count({
+        where: { ...where, status: 'PAID', orderType: 'TAKE_AWAY' },
+      }),
+      prisma.order.count({
+        where: { ...where, status: 'CANCELLED' },
+      }),
     ]);
 
-    const paidOrders = orders.filter((o) => o.status === 'PAID');
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
-    const totalDiscount = paidOrders.reduce((sum, o) => sum + o.discountAmount, 0);
-    const dineInCount = paidOrders.filter((o) => o.orderType === 'DINE_IN').length;
-    const takeAwayCount = paidOrders.filter((o) => o.orderType === 'TAKE_AWAY').length;
-    const cancelledCount = orders.filter((o) => o.status === 'CANCELLED').length;
+    const totalRevenue = paidSummary._sum.total || 0;
+    const totalDiscount = paidSummary._sum.discountAmount || 0;
+    const paidCount = paidSummary._count.syncId || 0;
 
     res.render('orders', {
       active: 'orders',
@@ -1285,7 +1296,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       total,
       summary: {
         totalRevenue,
-        paidCount: paidOrders.length,
+        paidCount,
         cancelledCount,
         dineInCount,
         takeAwayCount,

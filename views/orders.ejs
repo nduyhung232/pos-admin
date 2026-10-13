@@ -7,6 +7,9 @@
     </h4>
     <p class="text-muted small mb-0">
       Tổng cộng: <strong class="text-dark"><%= total %> đơn</strong> trong khoảng thời gian đã chọn
+      <% if (total > orders.length) { %>
+        <span class="text-secondary">(Hiển thị <%= orders.length %> đơn gần nhất)</span>
+      <% } %>
     </p>
   </div>
 
