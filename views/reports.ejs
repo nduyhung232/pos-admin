@@ -577,8 +577,32 @@
 
     // 1. TIMELINE CHART (Line + Bar combined)
     const timelineData = <%- JSON.stringify(chartTimeline) %>;
+    const isSingleDay = <%= isSingleDay ? 'true' : 'false' %>;
     const ctxTimeline = document.getElementById('timelineChart')?.getContext('2d');
     if (ctxTimeline && timelineData.labels.length > 0) {
+      // Tính giá trị trung bình Doanh thu và Số đơn
+      // Trên các ngày/giờ thực tế có phát sinh bán hàng
+      const activeRevenues = timelineData.revenue.filter(r => r > 0);
+      const activeOrders = timelineData.orders.filter(o => o > 0);
+
+      const countRevPoints = activeRevenues.length > 0 ? activeRevenues.length : (timelineData.revenue.length || 1);
+      const sumRevenue = timelineData.revenue.reduce((a, b) => a + b, 0);
+      const avgRevenue = Math.round(sumRevenue / countRevPoints);
+
+      const countOrdPoints = activeOrders.length > 0 ? activeOrders.length : (timelineData.orders.length || 1);
+      const sumOrders = timelineData.orders.reduce((a, b) => a + b, 0);
+      const avgOrders = Math.round((sumOrders / countOrdPoints) * 10) / 10;
+
+      const formatCompactVnd = (val) => {
+        if (val >= 1000000) return (val / 1000000).toFixed(2).replace(/\.?0+$/, '') + ' tr';
+        if (val >= 1000) return Math.round(val / 1000) + ' k';
+        return formatVnd(val);
+      };
+
+      const unitText = isSingleDay ? '/h' : '/ngày';
+      const labelRevAvg = 'Doanh thu TB (' + formatCompactVnd(avgRevenue) + unitText + ')';
+      const labelOrdAvg = 'Số đơn TB (' + avgOrders + ' đơn' + unitText + ')';
+
       new Chart(ctxTimeline, {
         data: {
           labels: timelineData.labels,
@@ -592,7 +616,7 @@
               borderWidth: 1,
               borderRadius: 6,
               yAxisID: 'yRevenue',
-              order: 2,
+              order: 3,
             },
             {
               type: 'line',
@@ -608,6 +632,36 @@
               pointBackgroundColor: '#1d4ed8',
               yAxisID: 'yOrders',
               order: 1,
+            },
+            {
+              type: 'line',
+              label: labelRevAvg,
+              data: new Array(timelineData.labels.length).fill(avgRevenue),
+              borderColor: '#f59e0b',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              pointBackgroundColor: '#f59e0b',
+              fill: false,
+              yAxisID: 'yRevenue',
+              order: 4,
+            },
+            {
+              type: 'line',
+              label: labelOrdAvg,
+              data: new Array(timelineData.labels.length).fill(avgOrders),
+              borderColor: '#8b5cf6',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              pointBackgroundColor: '#8b5cf6',
+              fill: false,
+              yAxisID: 'yOrders',
+              order: 2,
             }
           ]
         },
@@ -616,10 +670,23 @@
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
           plugins: {
-            legend: { position: 'top', labels: { boxWidth: 14, font: { family: 'Plus Jakarta Sans', size: 12 } } },
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 18,
+                padding: 12,
+                font: { family: 'Plus Jakarta Sans', size: 12 }
+              }
+            },
             tooltip: {
               callbacks: {
                 label: function(context) {
+                  if (context.dataset.label.startsWith('Doanh thu TB')) {
+                    return 'Doanh thu TB: ' + formatVnd(context.parsed.y) + (unitText ? ' ' + unitText : '');
+                  }
+                  if (context.dataset.label.startsWith('Số đơn TB')) {
+                    return 'Số đơn TB: ' + context.parsed.y + ' đơn' + (unitText ? ' ' + unitText : '');
+                  }
                   if (context.dataset.yAxisID === 'yRevenue') {
                     return 'Doanh thu: ' + formatVnd(context.parsed.y);
                   }
@@ -651,7 +718,47 @@
               ticks: { precision: 0 }
             }
           }
-        }
+        },
+        plugins: [
+          {
+            id: 'averageLineLabels',
+            afterDatasetsDraw(chart) {
+              const { ctx, chartArea, scales } = chart;
+              if (!chartArea || !scales || !scales.yRevenue || !scales.yOrders) return;
+              const { left, right, top, bottom } = chartArea;
+
+              // 1. Nhãn cho đường Doanh thu TB (bên trái, cạnh trục Doanh thu)
+              const revMeta = chart.getDatasetMeta(2);
+              if (revMeta && !revMeta.hidden && avgRevenue > 0) {
+                const yPosRev = scales.yRevenue.getPixelForValue(avgRevenue);
+                if (yPosRev >= top && yPosRev <= bottom) {
+                  ctx.save();
+                  ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+                  ctx.fillStyle = '#b45309';
+                  ctx.textAlign = 'left';
+                  ctx.textBaseline = 'bottom';
+                  ctx.fillText('TB: ' + formatCompactVnd(avgRevenue), left + 6, yPosRev - 3);
+                  ctx.restore();
+                }
+              }
+
+              // 2. Nhãn cho đường Số đơn TB (bên phải, cạnh trục Số đơn)
+              const ordMeta = chart.getDatasetMeta(3);
+              if (ordMeta && !ordMeta.hidden && avgOrders > 0) {
+                const yPosOrd = scales.yOrders.getPixelForValue(avgOrders);
+                if (yPosOrd >= top && yPosOrd <= bottom) {
+                  ctx.save();
+                  ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+                  ctx.fillStyle = '#6d28d9';
+                  ctx.textAlign = 'right';
+                  ctx.textBaseline = 'bottom';
+                  ctx.fillText('TB: ' + avgOrders + ' đơn', right - 6, yPosOrd - 3);
+                  ctx.restore();
+                }
+              }
+            }
+          }
+        ]
       });
     }
 
