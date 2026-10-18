@@ -113,6 +113,7 @@ pos-admin-web/
 
 - **Nhà cung cấp:** Supabase
 - **Dự án:** nduyhung232's Project
+- **Dashboard:** https://supabase.com/dashboard/project/ezykbldqydqclnxfzrgm
 - **Project Ref:** `ezykbldqydqclnxfzrgm`
 - **Khu vực (Region):** Southeast Asia (Singapore) - `ap-southeast-1`
 - **Database Password:** `2D@34PA6s9v.NEf`
