@@ -109,6 +109,18 @@ pos-admin-web/
 - Chưa có VAT (quy tắc làm tròn thuế là vấn đề pháp lý).
 - Session lưu RAM → restart là đăng xuất. Chạy nhiều process phải chuyển store sang SQLite/Redis.
 - ⚠️ App POS Android (`../sunmi-pos-tester`) **đã được bổ sung sync client** (pull/push, auth token, discount code, Money/DiscountCalculator khớp `money-vectors.json`) nhưng **chưa compile lần nào** (máy dev không có Android SDK). Sync đã verify ở phía server bằng token thật (`quay1-demo-token-123456` sau khi seed); luồng đầy đủ với thiết bị thật vẫn cần build APK và kiểm trên máy.
-```
-```
-"# pos-admin" 
+## 7. Thông tin Database Cloud (Supabase PostgreSQL - Miễn phí)
+
+- **Nhà cung cấp:** Supabase
+- **Dự án:** nduyhung232's Project
+- **Project Ref:** `ezykbldqydqclnxfzrgm`
+- **Khu vực (Region):** Southeast Asia (Singapore) - `ap-southeast-1`
+- **Database Password:** `2D@34PA6s9v.NEf`
+- **Connection String (Session Pooler - Cổng 5432, khuyên dùng cho Prisma & Web App):**
+  ```text
+  postgresql://postgres.ezykbldqydqclnxfzrgm:2D%4034PA6s9v.NEf@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+  ```
+- **Connection String (Transaction Pooler - Cổng 6543):**
+  ```text
+  postgresql://postgres.ezykbldqydqclnxfzrgm:2D%4034PA6s9v.NEf@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+  ```
