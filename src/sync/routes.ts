@@ -187,23 +187,38 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
       try {
         const existing = await prisma.order.findUnique({
           where: { syncId: order.syncId },
-          select: { id: true, status: true },
+          select: { id: true, status: true, orderType: true },
         });
 
         if (existing) {
-          // Already stored. The only legitimate later change is a cancellation.
+          // Already stored. Support legitimate operational corrections:
+          // 1. Order cancellation (PAID -> CANCELLED)
+          // 2. Service type correction (DINE_IN <-> TAKE_AWAY)
+          const updateData: {
+            status?: string;
+            cancelledByStaffSyncId?: string | null;
+            cancelledAtMs?: bigint | null;
+            orderType?: string;
+          } = {};
+
           if (order.status === 'CANCELLED' && existing.status === 'PAID') {
+            updateData.status = 'CANCELLED';
+            updateData.cancelledByStaffSyncId = order.cancelledByStaffSyncId;
+            updateData.cancelledAtMs =
+              order.cancelledAtMs === null ? null : BigInt(order.cancelledAtMs);
+          }
+
+          if (order.orderType && order.orderType !== existing.orderType) {
+            updateData.orderType = order.orderType;
+          }
+
+          if (Object.keys(updateData).length > 0) {
             await prisma.order.update({
               where: { id: existing.id },
-              data: {
-                status: 'CANCELLED',
-                cancelledByStaffSyncId: order.cancelledByStaffSyncId,
-                cancelledAtMs:
-                  order.cancelledAtMs === null ? null : BigInt(order.cancelledAtMs),
-              },
+              data: updateData,
             });
           }
-          // Re-push of an identical order is a no-op, not an error.
+
           acceptedOrderIds.push(order.syncId);
           continue;
         }
