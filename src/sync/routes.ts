@@ -187,18 +187,22 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
       try {
         const existing = await prisma.order.findUnique({
           where: { syncId: order.syncId },
-          select: { id: true, status: true, orderType: true },
+          select: { id: true, status: true, orderType: true, paymentMethod: true, shiftId: true },
         });
 
         if (existing) {
           // Already stored. Support legitimate operational corrections:
           // 1. Order cancellation (PAID -> CANCELLED)
           // 2. Service type correction (DINE_IN <-> TAKE_AWAY)
+          // 3. Payment method correction (CASH <-> TRANSFER)
           const updateData: {
             status?: string;
             cancelledByStaffSyncId?: string | null;
             cancelledAtMs?: bigint | null;
             orderType?: string;
+            paymentMethod?: string;
+            cashReceived?: number;
+            changeAmount?: number;
           } = {};
 
           if (order.status === 'CANCELLED' && existing.status === 'PAID') {
@@ -212,11 +216,42 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
             updateData.orderType = order.orderType;
           }
 
+          const paymentMethodChanged =
+            order.paymentMethod && order.paymentMethod !== existing.paymentMethod;
+          if (paymentMethodChanged) {
+            updateData.paymentMethod = order.paymentMethod;
+            updateData.cashReceived = order.cashReceived;
+            updateData.changeAmount = order.changeAmount;
+          }
+
           if (Object.keys(updateData).length > 0) {
             await prisma.order.update({
               where: { id: existing.id },
               data: updateData,
             });
+
+            // If payment method changed, re-evaluate shift cash variance if closed
+            if (paymentMethodChanged && existing.shiftId) {
+              const shift = await prisma.shift.findUnique({
+                where: { id: existing.shiftId },
+              });
+              if (shift && shift.status === 'CLOSED' && shift.countedCash !== null) {
+                const cashAgg = await prisma.order.aggregate({
+                  where: { shiftId: shift.id, status: 'PAID', paymentMethod: 'CASH' },
+                  _sum: { total: true },
+                });
+                const newCashSales = cashAgg._sum.total ?? 0;
+                const newExpectedCash = shift.openingCash + newCashSales;
+                const newCashDifference = shift.countedCash - newExpectedCash;
+                await prisma.shift.update({
+                  where: { id: shift.id },
+                  data: {
+                    expectedCash: newExpectedCash,
+                    cashDifference: newCashDifference,
+                  },
+                });
+              }
+            }
           }
 
           acceptedOrderIds.push(order.syncId);
