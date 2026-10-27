@@ -1170,11 +1170,24 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       createdAtMs: { gte: BigInt(fromMs), lte: BigInt(toMs) },
     };
 
-    const [orders, total, paidSummary, dineInCount, takeAwayCount, cancelledCount] = await Promise.all([
+    // Pagination parameters
+    const rawLimit = parseInt((req.query.limit as string) || '20', 10);
+    const limit = [20, 50, 100, 200].includes(rawLimit) ? rawLimit : 20;
+
+    const rawPage = parseInt((req.query.page as string) || '1', 10);
+    let page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+
+    const total = await prisma.order.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    if (page > totalPages) page = totalPages;
+    const skip = (page - 1) * limit;
+
+    const [orders, paidSummary, dineInCount, takeAwayCount, cancelledCount] = await Promise.all([
       prisma.order.findMany({
         where,
         orderBy: { createdAtMs: 'desc' },
-        take: 300,
+        skip,
+        take: limit,
         select: {
           syncId: true,
           subtotal: true,
@@ -1191,7 +1204,6 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
           items: { select: { productName: true, unitPrice: true, quantity: true } },
         },
       }),
-      prisma.order.count({ where }),
       prisma.order.aggregate({
         where: { ...where, status: 'PAID' },
         _sum: { total: true, discountAmount: true, subtotal: true },
@@ -1219,6 +1231,9 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       toDate,
       activePreset,
       total,
+      currentPage: page,
+      limit,
+      totalPages,
       summary: {
         totalRevenue,
         paidCount,
@@ -1248,9 +1263,21 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     const session = await requireManager(req, res, prisma, 'redirect');
     if (!session) return;
 
+    const rawLimit = parseInt((req.query.limit as string) || '20', 10);
+    const limit = [20, 50, 100, 200].includes(rawLimit) ? rawLimit : 20;
+
+    const rawPage = parseInt((req.query.page as string) || '1', 10);
+    let page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+
+    const total = await prisma.shift.count();
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    if (page > totalPages) page = totalPages;
+    const skip = (page - 1) * limit;
+
     const shifts = await prisma.shift.findMany({
       orderBy: { openedAtMs: 'desc' },
-      take: 200,
+      skip,
+      take: limit,
       select: {
         syncId: true,
         openedAtMs: true,
@@ -1273,6 +1300,10 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     res.render('shifts', {
       active: 'shifts',
       session,
+      total,
+      currentPage: page,
+      limit,
+      totalPages,
       shifts: shifts.map((s) => {
         let cashSales = 0;
         let transferSales = 0;

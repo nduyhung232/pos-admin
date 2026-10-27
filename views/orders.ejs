@@ -6,28 +6,28 @@
       <i class="bi bi-receipt-cutoff text-primary"></i> Lịch sử đơn hàng
     </h4>
     <p class="text-muted small mb-0">
-      Tổng cộng: <strong class="text-dark"><%= total %> đơn</strong> trong khoảng thời gian đã chọn
-      <% if (total > orders.length) { %>
-        <span class="text-secondary">(Hiển thị <%= orders.length %> đơn gần nhất)</span>
+      Tổng cộng: <strong class="text-dark"><%= total.toLocaleString('vi-VN') %> đơn</strong> trong khoảng thời gian đã chọn
+      <% if (total > 0) { %>
+        <span class="text-secondary">· Trang <%= currentPage %> / <%= totalPages %> (Hiển thị <%= orders.length %> đơn)</span>
       <% } %>
     </p>
   </div>
 
   <!-- Quick filter pills -->
   <div class="d-flex flex-wrap gap-2">
-    <a href="/orders?preset=today" class="filter-pill <%= activePreset === 'today' ? 'active' : '' %>">
+    <a href="/orders?preset=today&limit=<%= limit %>" class="filter-pill <%= activePreset === 'today' ? 'active' : '' %>">
       <i class="bi bi-calendar-event"></i> Hôm nay
     </a>
-    <a href="/orders?preset=yesterday" class="filter-pill <%= activePreset === 'yesterday' ? 'active' : '' %>">
+    <a href="/orders?preset=yesterday&limit=<%= limit %>" class="filter-pill <%= activePreset === 'yesterday' ? 'active' : '' %>">
       Hôm qua
     </a>
-    <a href="/orders?preset=last7days" class="filter-pill <%= activePreset === 'last7days' ? 'active' : '' %>">
+    <a href="/orders?preset=last7days&limit=<%= limit %>" class="filter-pill <%= activePreset === 'last7days' ? 'active' : '' %>">
       7 ngày qua
     </a>
-    <a href="/orders?preset=thismonth" class="filter-pill <%= activePreset === 'thismonth' ? 'active' : '' %>">
+    <a href="/orders?preset=thismonth&limit=<%= limit %>" class="filter-pill <%= activePreset === 'thismonth' ? 'active' : '' %>">
       Tháng này
     </a>
-    <a href="/orders?preset=lastmonth" class="filter-pill <%= activePreset === 'lastmonth' ? 'active' : '' %>">
+    <a href="/orders?preset=lastmonth&limit=<%= limit %>" class="filter-pill <%= activePreset === 'lastmonth' ? 'active' : '' %>">
       Tháng trước
     </a>
   </div>
@@ -36,6 +36,8 @@
 <!-- Custom date filter -->
 <div class="card-table-wrapper p-3 mb-4" style="background:#ffffff">
   <form method="GET" action="/orders" class="row g-2 align-items-center">
+    <input type="hidden" name="limit" value="<%= limit %>">
+    <input type="hidden" name="page" value="1">
     <div class="col-auto text-muted small fw-semibold">
       <i class="bi bi-funnel"></i> Khoảng thời gian:
     </div>
@@ -210,5 +212,7 @@
     </table>
   </div>
 </div>
+
+<%- include('partials/pagination', { currentPage, totalPages, limit, total, itemLabel: 'đơn' }) %>
 
 <%- include('partials/footer') %>

@@ -6,7 +6,10 @@
       <i class="bi bi-clock-history text-primary"></i> Lịch sử ca làm việc
     </h4>
     <p class="text-muted small mb-0">
-      Tổng cộng: <strong class="text-dark"><%= shifts.length %> ca gần nhất</strong>
+      Tổng cộng: <strong class="text-dark"><%= total.toLocaleString('vi-VN') %> ca làm việc</strong>
+      <% if (total > 0) { %>
+        <span class="text-secondary">· Trang <%= currentPage %> / <%= totalPages %> (Hiển thị <%= shifts.length %> ca)</span>
+      <% } %>
     </p>
   </div>
 </div>
@@ -143,5 +146,7 @@
     </table>
   </div>
 </div>
+
+<%- include('partials/pagination', { currentPage, totalPages, limit, total, itemLabel: 'ca' }) %>
 
 <%- include('partials/footer') %>

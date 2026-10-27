@@ -1,0 +1,117 @@
+<%
+  const _page = Number(currentPage) || 1;
+  const _totalPages = Number(totalPages) || 1;
+  const _limit = Number(limit) || 20;
+  const _total = Number(total) || 0;
+  const _options = [20, 50, 100, 200];
+  const _label = typeof itemLabel !== 'undefined' ? itemLabel : 'bản ghi';
+
+  const startRecord = _total > 0 ? (_page - 1) * _limit + 1 : 0;
+  const endRecord = Math.min(_page * _limit, _total);
+
+  // Generate page numbers window
+  let pagesToShow = [];
+  if (_totalPages <= 7) {
+    for (let i = 1; i <= _totalPages; i++) pagesToShow.push(i);
+  } else {
+    pagesToShow.push(1);
+    if (_page > 4) pagesToShow.push('...');
+    
+    const start = Math.max(2, _page - 1);
+    const end = Math.min(_totalPages - 1, _page + 1);
+    for (let i = start; i <= end; i++) {
+      if (!pagesToShow.includes(i)) pagesToShow.push(i);
+    }
+    
+    if (_page < _totalPages - 3) pagesToShow.push('...');
+    if (!pagesToShow.includes(_totalPages)) pagesToShow.push(_totalPages);
+  }
+%>
+
+<div class="card-table-wrapper p-3 mt-3 bg-white border-top">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <!-- Left: Rows per page selector & record count info -->
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="text-muted small fw-semibold text-nowrap mb-0" for="selectPageLimit">
+          <i class="bi bi-list-ul me-1"></i>Số <%= _label %>/trang:
+        </label>
+        <select id="selectPageLimit" class="form-select form-select-sm fw-semibold" style="width: auto; min-width: 90px;" onchange="onPageLimitChange(this.value)">
+          <% _options.forEach(function(opt) { %>
+            <option value="<%= opt %>" <%= _limit === opt ? 'selected' : '' %>><%= opt %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="text-muted small">
+        Hiển thị <strong><%= startRecord %></strong> - <strong><%= endRecord %></strong> / <strong><%= _total.toLocaleString('vi-VN') %></strong> <%= _label %>
+      </div>
+    </div>
+
+    <!-- Right: Page navigation buttons -->
+    <% if (_totalPages > 1) { %>
+    <nav aria-label="Page navigation">
+      <ul class="pagination pagination-sm mb-0 flex-wrap gap-1">
+        <!-- First Page -->
+        <li class="page-item <%= _page <= 1 ? 'disabled' : '' %>">
+          <a class="page-link" href="javascript:void(0)" onclick="goToPage(1)" title="Trang đầu" aria-label="Đầu">
+            <i class="bi bi-chevron-double-left"></i>
+          </a>
+        </li>
+
+        <!-- Previous Page -->
+        <li class="page-item <%= _page <= 1 ? 'disabled' : '' %>">
+          <a class="page-link" href="javascript:void(0)" onclick="goToPage(<%= _page - 1 %>)" title="Trang trước" aria-label="Trước">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+
+        <!-- Page Numbers -->
+        <% pagesToShow.forEach(function(p) { %>
+          <% if (p === '...') { %>
+            <li class="page-item disabled"><span class="page-link border-0 text-muted">…</span></li>
+          <% } else { %>
+            <li class="page-item <%= p === _page ? 'active' : '' %>">
+              <a class="page-link <%= p === _page ? 'fw-bold' : '' %>" href="javascript:void(0)" onclick="goToPage(<%= p %>)">
+                <%= p %>
+              </a>
+            </li>
+          <% } %>
+        <% }) %>
+
+        <!-- Next Page -->
+        <li class="page-item <%= _page >= _totalPages ? 'disabled' : '' %>">
+          <a class="page-link" href="javascript:void(0)" onclick="goToPage(<%= _page + 1 %>)" title="Trang sau" aria-label="Sau">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+
+        <!-- Last Page -->
+        <li class="page-item <%= _page >= _totalPages ? 'disabled' : '' %>">
+          <a class="page-link" href="javascript:void(0)" onclick="goToPage(<%= _totalPages %>)" title="Trang cuối" aria-label="Cuối">
+            <i class="bi bi-chevron-double-right"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  if (typeof window.goToPage !== 'function') {
+    window.goToPage = function(pageNumber) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('page', pageNumber);
+      window.location.href = url.toString();
+    };
+  }
+  if (typeof window.onPageLimitChange !== 'function') {
+    window.onPageLimitChange = function(newLimit) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('limit', newLimit);
+      url.searchParams.set('page', '1');
+      window.location.href = url.toString();
+    };
+  }
+</script>
