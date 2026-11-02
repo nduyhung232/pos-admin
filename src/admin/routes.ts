@@ -657,6 +657,8 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
           syncId: true,
           name: true,
           price: true,
+          priceShopee: true,
+          priceGrab: true,
           category: true,
           active: true,
           toppings: {
@@ -689,6 +691,8 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       name: z.string().min(1).max(200),
       // Integer VND only. A float price would corrupt every downstream total.
       price: z.coerce.number().int().nonnegative().max(100_000_000),
+      priceShopee: z.coerce.number().int().nonnegative().max(100_000_000).optional().nullable(),
+      priceGrab: z.coerce.number().int().nonnegative().max(100_000_000).optional().nullable(),
       category: z.string().min(1).max(100),
     });
     const parsed = schema.safeParse(req.body);
@@ -700,6 +704,8 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         syncId: randomUUID(),
         name: parsed.data.name.trim(),
         price: parsed.data.price,
+        priceShopee: parsed.data.priceShopee ?? null,
+        priceGrab: parsed.data.priceGrab ?? null,
         category: parsed.data.category.trim(),
         active: true,
         createdAtMs: BigInt(nowMs),
@@ -728,6 +734,8 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
             name: z.string().min(1).max(200).optional(),
             // Integer VND only. A float price would corrupt every downstream total.
             price: z.number().int().nonnegative().max(100_000_000).optional(),
+            priceShopee: z.number().int().nonnegative().max(100_000_000).nullable().optional(),
+            priceGrab: z.number().int().nonnegative().max(100_000_000).nullable().optional(),
             category: z.string().min(1).max(100).optional(),
             active: z.boolean().optional(),
           }),
@@ -739,7 +747,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'invalid' });
 
     const changes = parsed.data.changes.filter(
-      (c) => c.name !== undefined || c.price !== undefined || c.category !== undefined || c.active !== undefined,
+      (c) => c.name !== undefined || c.price !== undefined || c.priceShopee !== undefined || c.priceGrab !== undefined || c.category !== undefined || c.active !== undefined,
     );
     if (changes.length === 0) return res.json({ ok: true, updated: 0 });
 

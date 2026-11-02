@@ -64,6 +64,8 @@ model Product {
   name        String
   /// Integer VND.
   price       Int
+  priceShopee Int?
+  priceGrab   Int?
   category    String
   /// Soft delete: keeps historical orders explainable.
   active      Boolean  @default(true)

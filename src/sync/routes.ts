@@ -383,6 +383,8 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
           syncId: true,
           name: true,
           price: true,
+          priceShopee: true,
+          priceGrab: true,
           category: true,
           active: true,
           updatedAtMs: true,

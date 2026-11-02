@@ -24,15 +24,27 @@
   <div class="card-header fw-bold">Thêm món</div>
   <div class="card-body">
     <form method="post" action="/products" class="row g-2">
-      <div class="col-md-4"><input name="name" class="form-control" placeholder="Tên món" required></div>
-      <div class="col-md-3"><input name="category" class="form-control" placeholder="Danh mục" required></div>
-      <div class="col-md-3">
+      <div class="col-md-3"><input name="name" class="form-control" placeholder="Tên món" required></div>
+      <div class="col-md-2"><input name="category" class="form-control" placeholder="Danh mục" required></div>
+      <div class="col-md-2">
         <div class="input-group">
-          <input name="price" type="number" min="0" step="1" class="form-control" placeholder="Giá (VND)" required>
+          <input name="price" type="number" min="0" step="1" class="form-control" placeholder="Giá tại quán" required>
           <span class="input-group-text">đ</span>
         </div>
       </div>
-      <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+      <div class="col-md-2">
+        <div class="input-group">
+          <input name="priceShopee" type="number" min="0" step="1" class="form-control" placeholder="Giá Shopee">
+          <span class="input-group-text">đ</span>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="input-group">
+          <input name="priceGrab" type="number" min="0" step="1" class="form-control" placeholder="Giá Grab">
+          <span class="input-group-text">đ</span>
+        </div>
+      </div>
+      <div class="col-md-1"><button class="btn btn-primary w-100 px-0"><i class="bi bi-plus-lg"></i> Thêm</button></div>
     </form>
   </div>
 </div>
@@ -52,7 +64,9 @@
           <tr>
             <th style="min-width: 220px;">Tên món</th>
             <th style="min-width: 160px;">Danh mục</th>
-            <th class="text-end" style="min-width: 150px;">Đơn giá (VND)</th>
+            <th class="text-end" style="min-width: 130px;">Đơn giá tại quán</th>
+            <th class="text-end" style="min-width: 130px;">Đơn giá Shopee</th>
+            <th class="text-end" style="min-width: 130px;">Đơn giá Grab</th>
             <th style="min-width: 160px;">Topping đi kèm</th>
             <th class="text-center" style="min-width: 100px;">Trạng thái</th>
           </tr>
@@ -62,9 +76,21 @@
           <tr data-row data-syncid="<%= p.syncId %>">
             <td><input data-field="name" value="<%= p.name %>" class="form-control form-control-sm"></td>
             <td><input data-field="category" value="<%= p.category %>" class="form-control form-control-sm"></td>
-            <td style="max-width:150px">
+            <td style="max-width:130px">
               <div class="input-group input-group-sm">
-                <input data-field="price" type="number" min="0" step="1" value="<%= p.price %>" class="form-control text-end">
+                <input data-field="price" type="number" min="0" step="1" value="<%= p.price %>" class="form-control text-end" title="Đơn giá tại quán">
+                <span class="input-group-text">đ</span>
+              </div>
+            </td>
+            <td style="max-width:130px">
+              <div class="input-group input-group-sm">
+                <input data-field="priceShopee" type="number" min="0" step="1" value="<%= p.priceShopee != null ? p.priceShopee : '' %>" placeholder="Như tại quán" class="form-control text-end" title="Đơn giá Shopee">
+                <span class="input-group-text">đ</span>
+              </div>
+            </td>
+            <td style="max-width:130px">
+              <div class="input-group input-group-sm">
+                <input data-field="priceGrab" type="number" min="0" step="1" value="<%= p.priceGrab != null ? p.priceGrab : '' %>" placeholder="Như tại quán" class="form-control text-end" title="Đơn giá Grab">
                 <span class="input-group-text">đ</span>
               </div>
             </td>
@@ -82,7 +108,7 @@
             </td>
           </tr>
           <% }) %>
-          <% if (!products.length) { %><tr><td colspan="5" class="text-center text-muted">Chưa có món</td></tr><% } %>
+          <% if (!products.length) { %><tr><td colspan="7" class="text-center text-muted">Chưa có món</td></tr><% } %>
         </tbody>
       </table>
     </div>
