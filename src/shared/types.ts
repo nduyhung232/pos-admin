@@ -138,6 +138,7 @@ export interface OrderPush {
   discountType: DiscountType;
   discountInput: number;
   discountCode: string | null;
+  channel?: string;
   orderType: OrderType;
   paymentMethod: PaymentMethod;
   cashReceived: number;

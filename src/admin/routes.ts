@@ -304,6 +304,49 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
     }));
 
+    // Sales channels breakdown (Tại quán, Shopee, Grab)
+    const channelMap = new Map<string, { count: number; revenue: number; items: number }>();
+    for (const o of paidOrders) {
+      const ch = (o as any).channel || 'DINE_IN';
+      const cur = channelMap.get(ch) || { count: 0, revenue: 0, items: 0 };
+      cur.count += 1;
+      cur.revenue += o.total;
+      for (const it of o.items) {
+        cur.items += it.quantity;
+      }
+      channelMap.set(ch, cur);
+    }
+
+    const channelMeta: Record<string, { name: string; color: string; border: string }> = {
+      DINE_IN: { name: 'Tại quán', color: '#2563eb', border: '#1d4ed8' },
+      SHOPEE: { name: 'Shopee', color: '#ee4d2d', border: '#c23517' },
+      GRAB: { name: 'Grab', color: '#00b14f', border: '#008a3d' },
+    };
+
+    const byChannel = ['DINE_IN', 'SHOPEE', 'GRAB'].map((key) => {
+      const data = channelMap.get(key) || { count: 0, revenue: 0, items: 0 };
+      const meta = channelMeta[key];
+      return {
+        channel: key,
+        name: meta.name,
+        color: meta.color,
+        borderColor: meta.border,
+        orderCount: data.count,
+        revenue: data.revenue,
+        itemsCount: data.items,
+        averageOrderValue: data.count > 0 ? average(data.revenue, data.count) : 0,
+        percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    const shopeeStats = byChannel.find((c) => c.channel === 'SHOPEE')!;
+    const grabStats = byChannel.find((c) => c.channel === 'GRAB')!;
+    const dineInStats = byChannel.find((c) => c.channel === 'DINE_IN')!;
+    const appsRevenue = shopeeStats.revenue + grabStats.revenue;
+    const appsOrders = shopeeStats.orderCount + grabStats.orderCount;
+    const appsItems = shopeeStats.itemsCount + grabStats.itemsCount;
+    const appsPercent = totalRevenue > 0 ? Number(((appsRevenue / totalRevenue) * 100).toFixed(1)) : 0;
+
     // Hourly distribution (0h - 23h in Vietnam time UTC+7)
     const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
       hour: `${String(hour).padStart(2, '0')}:00`,
@@ -609,6 +652,16 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       averageOrderValue,
       byMethod,
       byOrderType,
+      byChannel,
+      channelStats: {
+        shopee: shopeeStats,
+        grab: grabStats,
+        dineIn: dineInStats,
+        appsRevenue,
+        appsOrders,
+        appsItems,
+        appsPercent,
+      },
       byCategory,
       topProducts,
       byStaff,
@@ -1190,7 +1243,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     if (page > totalPages) page = totalPages;
     const skip = (page - 1) * limit;
 
-    const [orders, paidSummary, dineInCount, takeAwayCount, cancelledCount] = await Promise.all([
+    const [orders, paidSummary, dineInCount, takeAwayCount, cancelledCount, shopeeCount, grabCount] = await Promise.all([
       prisma.order.findMany({
         where,
         orderBy: { createdAtMs: 'desc' },
@@ -1203,6 +1256,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
           total: true,
           discountType: true,
           discountCode: true,
+          channel: true,
           orderType: true,
           paymentMethod: true,
           status: true,
@@ -1226,6 +1280,12 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
       prisma.order.count({
         where: { ...where, status: 'CANCELLED' },
       }),
+      prisma.order.count({
+        where: { ...where, status: 'PAID', channel: 'SHOPEE' },
+      }),
+      prisma.order.count({
+        where: { ...where, status: 'PAID', channel: 'GRAB' },
+      }),
     ]);
 
     const totalRevenue = paidSummary._sum.total || 0;
@@ -1248,6 +1308,8 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         cancelledCount,
         dineInCount,
         takeAwayCount,
+        shopeeCount,
+        grabCount,
         totalDiscount,
       },
       orders: orders.map((o) => {

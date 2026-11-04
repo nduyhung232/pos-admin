@@ -81,10 +81,11 @@
   </div>
   <div class="col-md-3 col-6">
     <div class="p-3 bg-white rounded-3 border shadow-sm">
-      <div class="text-muted small text-uppercase fw-semibold" style="font-size:11px">Hình thức phục vụ</div>
+      <div class="text-muted small text-uppercase fw-semibold" style="font-size:11px">Kênh bán & Ứng dụng</div>
       <div class="fs-6 fw-bold text-dark mt-1">
-        <span class="text-teal"><%= summary.dineInCount %> Tại bàn</span> · 
-        <span class="text-orange"><%= summary.takeAwayCount %> Mang về</span>
+        <span style="color:#ee4d2d"><%= summary.shopeeCount || 0 %> Shopee</span> · 
+        <span style="color:#00b14f"><%= summary.grabCount || 0 %> Grab</span> · 
+        <span class="text-primary"><%= (summary.paidCount - (summary.shopeeCount || 0) - (summary.grabCount || 0)) %> Quán</span>
       </div>
     </div>
   </div>
@@ -111,6 +112,7 @@
           <th style="min-width: 140px;">Máy POS</th>
           <th style="min-width: 110px;">Thu ngân</th>
           <th style="min-width: 110px;">Loại đơn</th>
+          <th style="min-width: 105px;">Kênh bán</th>
           <th style="min-width: 120px;">Thanh toán</th>
           <th class="text-end" style="min-width: 100px;">Giảm giá</th>
           <th class="text-end" style="min-width: 120px;">Tổng tiền</th>
@@ -149,6 +151,23 @@
               <i class="bi <%= o.orderType === 'DINE_IN' ? 'bi-shop' : 'bi-bag' %>"></i>
               <%= o.orderType === 'DINE_IN' ? 'Tại bàn' : 'Mang về' %>
             </span>
+          </td>
+
+          <!-- Kênh bán -->
+          <td>
+            <% if (o.channel === 'SHOPEE') { %>
+              <span class="badge text-white px-2 py-1" style="background:#ee4d2d;">
+                <i class="bi bi-bag-check me-1"></i>Shopee
+              </span>
+            <% } else if (o.channel === 'GRAB') { %>
+              <span class="badge text-white px-2 py-1" style="background:#00b14f;">
+                <i class="bi bi-bicycle me-1"></i>Grab
+              </span>
+            <% } else { %>
+              <span class="badge bg-light text-secondary border px-2 py-1">
+                <i class="bi bi-shop me-1"></i>Tại quán
+              </span>
+            <% } %>
           </td>
 
           <!-- Thanh toán -->

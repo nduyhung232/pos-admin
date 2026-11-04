@@ -222,6 +222,8 @@ model Order {
   discountInput Int    @default(0)
   discountCode  String?
 
+  channel       String   @default("DINE_IN")
+
   orderType     String
   paymentMethod String
   cashReceived  Int
