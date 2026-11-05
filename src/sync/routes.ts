@@ -439,6 +439,8 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
         syncId: p.syncId,
         name: p.name,
         price: p.price,
+        priceShopee: p.priceShopee ?? 0,
+        priceGrab: p.priceGrab ?? 0,
         category: p.category,
         active: p.active,
         updatedAtMs: Number(p.updatedAtMs),

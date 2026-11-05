@@ -66,6 +66,8 @@ export interface Product {
   name: string;
   /** Integer VND. */
   price: number;
+  priceShopee?: number | null;
+  priceGrab?: number | null;
   category: string;
   active: boolean;
   updatedAtMs: number;
