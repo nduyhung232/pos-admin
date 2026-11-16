@@ -23,6 +23,8 @@ export const PaymentMethod = {
   CASH: 'CASH',
   TRANSFER: 'TRANSFER',
   CARD: 'CARD',
+  SHOPEE: 'SHOPEE',
+  GRAB: 'GRAB',
 } as const;
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 

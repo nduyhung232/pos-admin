@@ -282,7 +282,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
     }
     const byMethod = Array.from(methodMap.entries()).map(([method, data]) => ({
       paymentMethod: method,
-      name: method === 'CASH' ? 'Tiền mặt' : method === 'TRANSFER' ? 'Chuyển khoản' : method === 'CARD' ? 'Thẻ' : method,
+      name: method === 'CASH' ? 'Tiền mặt' : method === 'TRANSFER' ? 'Chuyển khoản' : method === 'CARD' ? 'Thẻ' : method === 'SHOPEE' ? 'Shopee' : method === 'GRAB' ? 'Grab' : method,
       orderCount: data.count,
       revenue: data.revenue,
       percent: totalRevenue > 0 ? Number(((data.revenue / totalRevenue) * 100).toFixed(1)) : 0,
@@ -1362,7 +1362,7 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         device: { select: { name: true } },
         orders: {
           where: { status: 'PAID' },
-          select: { total: true, paymentMethod: true },
+          select: { total: true, paymentMethod: true, channel: true },
         },
       },
     });
@@ -1378,12 +1378,22 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
         let cashSales = 0;
         let transferSales = 0;
         let cardSales = 0;
+        let shopeeSales = 0;
+        let grabSales = 0;
         let totalSales = 0;
         for (const o of s.orders) {
           totalSales += o.total;
-          if (o.paymentMethod === 'CASH') cashSales += o.total;
-          else if (o.paymentMethod === 'TRANSFER') transferSales += o.total;
-          else if (o.paymentMethod === 'CARD') cardSales += o.total;
+          if (o.channel === 'SHOPEE' || o.paymentMethod === 'SHOPEE') {
+            shopeeSales += o.total;
+          } else if (o.channel === 'GRAB' || o.paymentMethod === 'GRAB') {
+            grabSales += o.total;
+          } else if (o.paymentMethod === 'CASH') {
+            cashSales += o.total;
+          } else if (o.paymentMethod === 'TRANSFER') {
+            transferSales += o.total;
+          } else if (o.paymentMethod === 'CARD') {
+            cardSales += o.total;
+          }
         }
         return {
           ...s,
@@ -1395,6 +1405,8 @@ export function registerAdminRoutes(app: Express, prisma: PrismaClient, config: 
           cashSales,
           transferSales,
           cardSales,
+          shopeeSales,
+          grabSales,
         };
       }),
     });

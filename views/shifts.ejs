@@ -26,6 +26,8 @@
           <th class="text-end" style="min-width: 130px;">Doanh thu ca</th>
           <th class="text-end" style="min-width: 120px;">Tiền mặt</th>
           <th class="text-end" style="min-width: 130px;">Chuyển khoản</th>
+          <th class="text-end" style="min-width: 110px;">Shopee</th>
+          <th class="text-end" style="min-width: 110px;">Grab</th>
           <th class="text-end" style="min-width: 110px;">Quỹ đầu ca</th>
           <th class="text-end" style="min-width: 120px;">Đếm thực tế</th>
           <th class="text-end" style="min-width: 120px;">Dự kiến két</th>
@@ -89,6 +91,16 @@
             <span class="badge-pay badge-pay-transfer"><%= Number(s.transferSales).toLocaleString('vi-VN') %> đ</span>
           </td>
 
+          <!-- Shopee -->
+          <td class="text-end text-nowrap">
+            <span class="badge bg-warning-subtle text-dark border border-warning"><%= Number(s.shopeeSales).toLocaleString('vi-VN') %> đ</span>
+          </td>
+
+          <!-- Grab -->
+          <td class="text-end text-nowrap">
+            <span class="badge bg-success-subtle text-success border border-success"><%= Number(s.grabSales).toLocaleString('vi-VN') %> đ</span>
+          </td>
+
           <!-- Quỹ đầu ca -->
           <td class="text-end fw-semibold text-nowrap">
             <%= Number(s.openingCash).toLocaleString('vi-VN') %> đ
@@ -136,7 +148,7 @@
         <% }) %>
         <% if (!shifts.length) { %>
         <tr>
-          <td colspan="13" class="text-center text-muted py-5">
+          <td colspan="15" class="text-center text-muted py-5">
             <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
             Chưa có ca làm việc nào được ghi nhận
           </td>

@@ -172,9 +172,9 @@
 
           <!-- Thanh toán -->
           <td>
-            <span class="badge-pay <%= o.paymentMethod === 'CASH' ? 'badge-pay-cash' : (o.paymentMethod === 'TRANSFER' ? 'badge-pay-transfer' : 'badge-pay-card') %>">
-              <i class="bi <%= o.paymentMethod === 'CASH' ? 'bi-cash' : (o.paymentMethod === 'TRANSFER' ? 'bi-qr-code' : 'bi-credit-card') %>"></i>
-              <%= o.paymentMethod === 'CASH' ? 'Tiền mặt' : (o.paymentMethod === 'TRANSFER' ? 'Chuyển khoản' : 'Thẻ') %>
+            <span class="badge-pay <%= o.paymentMethod === 'CASH' ? 'badge-pay-cash' : (o.paymentMethod === 'TRANSFER' ? 'badge-pay-transfer' : (o.paymentMethod === 'SHOPEE' ? 'badge-channel-shopee' : (o.paymentMethod === 'GRAB' ? 'badge-channel-grab' : 'badge-pay-card'))) %>">
+              <i class="bi <%= o.paymentMethod === 'CASH' ? 'bi-cash' : (o.paymentMethod === 'TRANSFER' ? 'bi-qr-code' : (o.paymentMethod === 'SHOPEE' ? 'bi-bag-check' : (o.paymentMethod === 'GRAB' ? 'bi-bicycle' : 'bi-credit-card'))) %>"></i>
+              <%= o.paymentMethod === 'CASH' ? 'Tiền mặt' : (o.paymentMethod === 'TRANSFER' ? 'Chuyển khoản' : (o.paymentMethod === 'SHOPEE' ? 'Shopee' : (o.paymentMethod === 'GRAB' ? 'Grab' : 'Thẻ'))) %>
             </span>
           </td>
 

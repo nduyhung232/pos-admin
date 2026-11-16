@@ -55,7 +55,7 @@ const orderSchema = z.object({
   discountCode: z.string().max(32).nullable(),
   channel: z.string().optional().default('DINE_IN'),
   orderType: z.enum(['DINE_IN', 'TAKE_AWAY']),
-  paymentMethod: z.enum(['CASH', 'TRANSFER', 'CARD']),
+  paymentMethod: z.enum(['CASH', 'TRANSFER', 'CARD', 'SHOPEE', 'GRAB']),
   cashReceived: z.number().int().nonnegative(),
   changeAmount: z.number().int().nonnegative(),
   status: z.enum(['PAID', 'CANCELLED']),
@@ -238,7 +238,7 @@ export function registerSyncRoutes(app: Express, prisma: PrismaClient): void {
               });
               if (shift && shift.status === 'CLOSED' && shift.countedCash !== null) {
                 const cashAgg = await prisma.order.aggregate({
-                  where: { shiftId: shift.id, status: 'PAID', paymentMethod: 'CASH' },
+                  where: { shiftId: shift.id, status: 'PAID', paymentMethod: 'CASH', channel: 'DINE_IN' },
                   _sum: { total: true },
                 });
                 const newCashSales = cashAgg._sum.total ?? 0;
